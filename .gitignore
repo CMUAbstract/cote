@@ -6,3 +6,12 @@ Makefile
 
 # Files
 *.csv
+
+# Executables
+test_date_time
+test_ground_station
+test_log
+test_satellite
+test_utilities
+generate_ecis
+generate_gnds
