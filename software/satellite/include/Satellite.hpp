@@ -35,7 +35,7 @@ namespace cote {
     virtual Satellite& operator=(const Satellite& satellite);
     virtual Satellite& operator=(Satellite&& satellite);
     virtual Satellite* clone() const;
-    uint32_t getCatalogNumber() const;
+    uint32_t getID() const;
     DateTime getTLEEpoch() const;
     float getBstar() const;
     float getInclination() const;
@@ -48,7 +48,7 @@ namespace cote {
     DateTime getLocalTime() const;
     const DateTime* getGlobalTime() const;
     Log* getLog() const;
-    void setCatalogNumber(const uint32_t& catalogNumber);
+    void setID(const uint32_t& id);
     void setLocalTime(const DateTime& localTime);
     virtual void update(const uint32_t& nanosecond);
     virtual void update(const uint8_t& second, const uint32_t& nanosecond);
@@ -60,8 +60,8 @@ namespace cote {
      const uint32_t& nanosecond
     );
   private:
-    uint32_t catalogNumber;
-    DateTime tleEpoch;
+    uint32_t id;                  // defaults to catalog number
+    DateTime tleEpoch;            // validity of TLE is centered at this time
     float bstar;                  // inverse Earth radians
     float inclination;            // radians
     float raan;                   // right ascension of node in radians

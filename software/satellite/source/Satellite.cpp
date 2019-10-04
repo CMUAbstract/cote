@@ -39,7 +39,7 @@ namespace cote {
     std::getline(tleHandle,line);
     while(line.substr(0,2)!="1 " && std::getline(tleHandle,line)) {}
     // Parse catalog number
-    this->catalogNumber = static_cast<uint32_t>(std::stoi(line.substr(2,5)));
+    this->id = static_cast<uint32_t>(std::stoi(line.substr(2,5)));
     // Parse TLE
     std::tuple<int16_t,uint8_t,uint8_t,uint8_t,uint8_t,uint8_t,uint32_t> dt =
      util::getTleEpoch(tleFile);
@@ -90,10 +90,9 @@ namespace cote {
   }
 
   Satellite::Satellite(const Satellite& satellite) :
-   catalogNumber(satellite.getCatalogNumber()),
-   tleEpoch(satellite.getTLEEpoch()), bstar(satellite.getBstar()),
-   inclination(satellite.getInclination()), raan(satellite.getRAAN()),
-   eccentricity(satellite.getEccentricity()),
+   id(satellite.getID()), tleEpoch(satellite.getTLEEpoch()),
+   bstar(satellite.getBstar()), inclination(satellite.getInclination()),
+   raan(satellite.getRAAN()), eccentricity(satellite.getEccentricity()),
    argOfPerigee(satellite.getArgOfPerigee()),
    meanAnomaly(satellite.getMeanAnomaly()),
    meanMotion(satellite.getMeanMotion()), eciPosn(satellite.getECIPosn()),
@@ -101,13 +100,12 @@ namespace cote {
    log(satellite.getLog()) {}
 
   Satellite::Satellite(Satellite&& satellite) :
-   catalogNumber(satellite.catalogNumber), tleEpoch(satellite.tleEpoch),
-   bstar(satellite.bstar), inclination(satellite.inclination),
-   raan(satellite.raan), eccentricity(satellite.eccentricity),
-   argOfPerigee(satellite.argOfPerigee), meanAnomaly(satellite.meanAnomaly),
-   meanMotion(satellite.meanMotion), eciPosn(satellite.eciPosn),
-   localTime(satellite.localTime), globalTime(satellite.globalTime),
-   log(satellite.log) {
+   id(satellite.id), tleEpoch(satellite.tleEpoch), bstar(satellite.bstar),
+   inclination(satellite.inclination), raan(satellite.raan),
+   eccentricity(satellite.eccentricity), argOfPerigee(satellite.argOfPerigee),
+   meanAnomaly(satellite.meanAnomaly), meanMotion(satellite.meanMotion),
+   eciPosn(satellite.eciPosn), localTime(satellite.localTime),
+   globalTime(satellite.globalTime), log(satellite.log) {
     satellite.globalTime = NULL;
     satellite.log = NULL;
   }
@@ -124,7 +122,7 @@ namespace cote {
   }
 
   Satellite& Satellite::operator=(Satellite&& satellite) {
-    this->catalogNumber = satellite.catalogNumber;
+    this->id = satellite.id;
     this->tleEpoch = satellite.tleEpoch;
     this->bstar = satellite.bstar;
     this->inclination = satellite.inclination;
@@ -146,8 +144,8 @@ namespace cote {
     return new Satellite(*this);
   }
 
-  uint32_t Satellite::getCatalogNumber() const {
-    return this->catalogNumber;
+  uint32_t Satellite::getID() const {
+    return this->id;
   }
 
   DateTime Satellite::getTLEEpoch() const {
@@ -224,8 +222,8 @@ namespace cote {
     };
   }
 
-  void Satellite::setCatalogNumber(const uint32_t& catalogNumber) {
-    this->catalogNumber = catalogNumber;
+  void Satellite::setID(const uint32_t& id) {
+    this->id = id;
   }
 
   void Satellite::setLocalTime(const DateTime& localTime) {
