@@ -632,6 +632,12 @@ namespace cote { namespace util {
    const std::array<double,3>& eciPosnSat
   ) {
     const double zrot = calcGMSTRadFromUT1(julianDay, second, nanosecond);
+    // Shifts lons to familiar range but lowers performance
+    //double longitudeRad = (std::atan2(eciPosnSat.at(1),eciPosnSat.at(0))-zrot);
+    //while(longitudeRad<0.0) {
+    //  longitudeRad+=cnst::TWO_PI;
+    //}
+    //return longitudeRad/cnst::RAD_PER_DEG;
     return
      (std::atan2(eciPosnSat.at(1),eciPosnSat.at(0))-zrot)/cnst::RAD_PER_DEG;
   }

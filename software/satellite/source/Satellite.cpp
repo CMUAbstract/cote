@@ -228,6 +228,26 @@ namespace cote {
 
   void Satellite::setLocalTime(const DateTime& localTime) {
     this->localTime = localTime;
+    // Local time has changed; re-calculate eciPosn
+    std::array<float,3> sgp4Posn = util::sgp4(
+     this->bstar, this->inclination, this->raan, this->eccentricity,
+     this->argOfPerigee, this->meanAnomaly, this->meanMotion,
+     static_cast<float>(util::calcTdiffMin(
+      this->localTime.getYear(), this->localTime.getMonth(),
+      this->localTime.getDay(), this->localTime.getHour(),
+      this->localTime.getMinute(), this->localTime.getSecond(),
+      this->localTime.getNanosecond(),
+      this->tleEpoch.getYear(), this->tleEpoch.getMonth(),
+      this->tleEpoch.getDay(), this->tleEpoch.getHour(),
+      this->tleEpoch.getMinute(), this->tleEpoch.getSecond(),
+      this->tleEpoch.getNanosecond()
+     ))
+    );
+    this->eciPosn = {
+     static_cast<double>(sgp4Posn.at(0)),
+     static_cast<double>(sgp4Posn.at(1)),
+     static_cast<double>(sgp4Posn.at(2))
+    };
   }
 
   void Satellite::update(const uint8_t& second, const uint32_t& nanosecond) {
