@@ -13,6 +13,7 @@ test_ground_station
 test_log
 test_satellite
 test_utilities
+generate_constellation_configuration
 generate_ecis
 generate_gnds
 generate_ground_tracks

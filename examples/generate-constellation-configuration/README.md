@@ -1,15 +1,7 @@
-# Generate Ground Track Logs
+# Generate Constellation Configuration
 
-This example program accepts configuration files as input and outputs ground
-track logs.
-
-In order to run the script that produces a ground track PDF, the following
-software must be installed:
-
-```bash
-sudo apt install libproj-dev
-sudo apt install libgeos-dev
-```
+This example program accepts configuration files as input and outputs a
+constellation configuration file.
 
 ## Directory Contents
 

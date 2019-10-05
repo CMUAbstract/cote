@@ -4,8 +4,14 @@ Example programs using the `cote` software.
 
 ## Directory Contents
 
+* [generate-constellation-configuration](generate-constellation-configuration):
+  Generates constellation configuration files from input parameters
 * [generate-ecis](generate-ecis/README.md): Generates ECI coordinates for a
   satellite orbit
+* [generate-gnds](generate-gnds/README.md): Generates LLH coordinates for ground
+  stations
+* [generate-ground-tracks](generate-ground-tracks/README.md): Generates
+  satellite ground tracks
 * [README.md](README.md): This document
 
 ## License
