@@ -152,7 +152,7 @@ with open(cfg+config_files[0], mode='r') as infile:
   while i<len(lines) and lines[i][:2]!='2 ':
     i += 1
   if lines[i][:2]=='2 ':
-    rev_per_day = float(lines[i][52:69])
+    rev_per_day = float(lines[i][52:63])
   else:
     print('Incorrect TLE file format, exiting')
     exit()
