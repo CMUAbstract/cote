@@ -1,17 +1,11 @@
 #!/bin/bash
 #
 # setup_dependencies_mac.sh
-# A bash script that sets up dependencies on macOS
+# A bash script that sets up dependencies on macOS Catalina (10.15)
 #
 # NOTE: RUN THE FOLLOWING COMMAND FROM THE TERMINAL BEFORE EXECUTING THIS SCRIPT
 #
 # xcode-select --install
-#
-# NOTE: IF USING 10.14 (Mojave) OR LATER, RUN THE FOLLOWING COMMANDS
-#
-# cd /Library/Developer/CommandLineTools/Packages/
-# open .
-# # Double-click the pkg file and accept the defaults 
 #
 # Usage: ./setup_dependencies_mac.sh /path/to/sw
 # Arguments:
@@ -34,6 +28,7 @@
 if [ -z "$1" ]
 then
   echo "Usage: ./setup_dependencies_mac.sh /path/to/sw"
+  echo "/path/to/sw specifies where gcc will be placed"
   exit 0
 fi
 DIR=$1
@@ -42,38 +37,34 @@ then
   mkdir $DIR
 fi
 
-# GCC 8.3.0 for C++17
+# GCC 9.2.0 for C++17
 cd $DIR/
-if [ ! -d "$DIR/gcc-8.3.0" ]
+if [ ! -d "$DIR/gcc-9.2.0" ]
 then
-  curl https://ftp.gnu.org/gnu/gcc/gcc-8.3.0/gcc-8.3.0.tar.gz -o gcc-8.3.0.tar.gz
-  tar xzf gcc-8.3.0.tar.gz
-  rm gcc-8.3.0.tar.gz
-  curl https://gmplib.org/download/gmp/gmp-6.1.2.tar.bz2 -o gmp-6.1.2.tar.bz2
-  tar xjf gmp-6.1.2.tar.bz2
-  rm gmp-6.1.2.tar.bz2
-  cp -rp gmp-6.1.2/ gcc-8.3.0/gmp/
-  rm -rf gmp-6.1.2/
-  curl https://www.mpfr.org/mpfr-current/mpfr-4.0.2.tar.gz -o mpfr-4.0.2.tar.gz
-  tar xzf mpfr-4.0.2.tar.gz
-  rm mpfr-4.0.2.tar.gz
-  cp -rp mpfr-4.0.2/ gcc-8.3.0/mpfr/
-  rm -rf mpfr-4.0.2/
-  curl https://ftp.gnu.org/gnu/mpc/mpc-1.1.0.tar.gz -o mpc-1.1.0.tar.gz
-  tar xzf mpc-1.1.0.tar.gz
-  rm mpc-1.1.0.tar.gz
-  cp -rp mpc-1.1.0/ gcc-8.3.0/mpc/
-  rm -rf mpc-1.1.0/
+  curl https://ftp.gnu.org/gnu/gcc/gcc-9.2.0/gcc-9.2.0.tar.gz -o gcc-9.2.0.tar.gz
+  tar xzf gcc-9.2.0.tar.gz
+  rm gcc-9.2.0.tar.gz
+  curl https://raw.githubusercontent.com/Homebrew/formula-patches/b8b8e65e/gcc/9.2.0-catalina.patch -o 9.2.0-catalina.patch
+  cd gcc-9.2.0
+  ./contrib/download_prerequisites
+  cd fixincludes/
+  patch < ../../9.2.0-catalina.patch
+  rm ../../9.2.0-catalina.patch
+  cd ../../
 fi
-if [ ! -d "$DIR/gcc-8.3.0-build" ]
+if [ ! -d "$DIR/gcc-9.2.0-build" ]
 then
-  mkdir gcc-8.3.0-build/
+  mkdir gcc-9.2.0-build/
 fi
-if [ ! -d "$DIR/gcc-8.3.0-install" ]
+if [ ! -d "$DIR/gcc-9.2.0-install" ]
 then
-  mkdir gcc-8.3.0-install/
-  cd gcc-8.3.0-build/
-  ../gcc-8.3.0/configure --disable-multilib --prefix=$DIR/gcc-8.3.0-install CC=clang CXX=clang++
+  mkdir gcc-9.2.0-install/
+  cd gcc-9.2.0-build/
+  ../gcc-9.2.0/configure --disable-multilib --prefix=$DIR/gcc-9.2.0-install \
+   --with-sysroot=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/
   make -j $( sysctl -n hw.ncpu )
   make install
+  cd ../
+  cp -rp gcc-9.2.0-install/ gcc-8.3.0-install/
+  cp -rp gcc-9.2.0-install/ gcc/
 fi
