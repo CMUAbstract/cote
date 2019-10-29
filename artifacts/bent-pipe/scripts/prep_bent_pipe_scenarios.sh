@@ -29,7 +29,7 @@ do
     cp ./common-data/date-time.dat ../configuration/$sat_config-$sat_count-$gnd_config-$gnd_count/
     cp ./common-data/time-step.dat ../configuration/$sat_config-$sat_count-$gnd_config-$gnd_count/
     cp ./common-data/num-steps.dat ../configuration/$sat_config-$sat_count-$gnd_config-$gnd_count/
-    cp ./common-data/$sat_config-$sat_count.dat ../configuration/$sat_config-$sat_count-$gnd_config-$gnd_count/
+    cp ./common-data/$sat_config-$sat_count.dat ../configuration/$sat_config-$sat_count-$gnd_config-$gnd_count/constellation.dat
     cp ./common-data/$sat_config.tle ../configuration/$sat_config-$sat_count-$gnd_config-$gnd_count/
     cp ./common-data/sensor.dat ../configuration/$sat_config-$sat_count-$gnd_config-$gnd_count/
     python3 populate_tx.py ../configuration/$sat_config-$sat_count-$gnd_config-$gnd_count/ tle 2.0 -1.0 6.0 8.15e9 20.0e6 ../configuration/$sat_config-$sat_count-$gnd_config-$gnd_count/
