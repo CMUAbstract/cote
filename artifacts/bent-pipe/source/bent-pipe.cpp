@@ -41,7 +41,7 @@
 #include <Satellite.hpp>     // Satellite
 #include <Sensor.hpp>        // Sensor
 #include <Transmitter.hpp>   // Transmitter
-#include <utilities.hpp>     // calcJulianDayFromYMD
+#include <utilities.hpp>     // calcJulianDayFromYMD, calcSecSinceMidnight
 
 int main(int argc, char** argv) {
   // Set up variables
@@ -269,12 +269,9 @@ int main(int argc, char** argv) {
     const double JD = cote::util::calcJulianDayFromYMD(
      dateTime.getYear(),dateTime.getMonth(),dateTime.getDay()
     );
-    const uint32_t SEC =
-     (
-      static_cast<uint32_t>(dateTime.getHour())*
-      static_cast<uint32_t>(cote::cnst::MIN_PER_HOUR)+
-      static_cast<uint32_t>(dateTime.getMinute())
-     )*static_cast<uint32_t>(cote::cnst::SEC_PER_MIN)+dateTime.getSecond();
+    const uint32_t SEC = cote::util::calcSecSinceMidnight(
+     dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond()
+    );
     const uint32_t NS = dateTime.getNanosecond();
     //// Determine visible satellites for each ground station
     //// Clear satellite occupied flag if no longer visible
@@ -293,7 +290,7 @@ int main(int argc, char** argv) {
           gndId2VisSats[GND_ID].push_back(&(satellites.at(j)));
           if(
            gndId2CurrSat[GND_ID]!=NULL &&
-           gndId2CurrSat[GND_ID]==&(satellites.at(j))
+           gndId2CurrSat[GND_ID]==gndId2VisSats[GND_ID].back()
           ) {
             currSatInView = true;
           }
@@ -328,7 +325,7 @@ int main(int argc, char** argv) {
         }
         bestSat = NULL;
       }
-      // If there are links now, formally construct them
+      // If a downlink exists, formally construct it
       if(gndId2CurrSat[GND_ID]!=NULL) {
         const uint32_t SAT_ID = gndId2CurrSat[GND_ID]->getID();
         // Construct downlink
@@ -356,41 +353,25 @@ int main(int argc, char** argv) {
      prevSenseDateTime.getYear(), prevSenseDateTime.getMonth(),
      prevSenseDateTime.getDay()
     );
-    const uint32_t PREV_SEC =
-     (
-      static_cast<uint32_t>(prevSenseDateTime.getHour())*
-      static_cast<uint32_t>(cote::cnst::MIN_PER_HOUR)+
-      static_cast<uint32_t>(prevSenseDateTime.getMinute())
-     )*static_cast<uint32_t>(cote::cnst::SEC_PER_MIN)+
-     prevSenseDateTime.getSecond();
+    const uint32_t PREV_SEC = cote::util::calcSecSinceMidnight(
+     prevSenseDateTime.getHour(), prevSenseDateTime.getMinute(),
+     prevSenseDateTime.getSecond()
+    );
     const uint32_t PREV_NS = prevSenseDateTime.getNanosecond();
     const double PREV_LAT = cote::util::calcSubpointLatitude(prevSensePosn);
     const double PREV_LON = cote::util::calcSubpointLongitude(
      PREV_JD, PREV_SEC, PREV_NS, prevSensePosn
     );
     const std::array<double,3> currPosn=satId2Sensor[LEAD_SAT_ID]->getECIPosn();
-    const cote::DateTime currDateTime = dateTime;
-    const double CURR_JD = cote::util::calcJulianDayFromYMD(
-     currDateTime.getYear(),currDateTime.getMonth(),currDateTime.getDay()
-    );
-    const uint32_t CURR_SEC =
-     (
-      static_cast<uint32_t>(currDateTime.getHour())*
-      static_cast<uint32_t>(cote::cnst::MIN_PER_HOUR)+
-      static_cast<uint32_t>(currDateTime.getMinute())
-     )*static_cast<uint32_t>(cote::cnst::SEC_PER_MIN)+currDateTime.getSecond();
-    const uint32_t CURR_NS = currDateTime.getNanosecond();
     const double CURR_LAT = cote::util::calcSubpointLatitude(currPosn);
     const double CURR_LON = cote::util::calcSubpointLongitude(
-     CURR_JD, CURR_SEC, CURR_NS, currPosn
+     JD, SEC, NS, currPosn
     );
     const double distanceKm = cote::util::calcGreatCircleArc(
      CURR_LON, CURR_LAT, PREV_LON, PREV_LAT
     )*cote::cnst::WGS_84_A; // Earth "radius" in km
     if(distanceKm>=satId2ThresholdKm[LEAD_SAT_ID]) {
-      log.evnt(
-       cote::LogLevel::INFO,currDateTime.toString(),"trigger-time"
-      );
+      log.evnt(cote::LogLevel::INFO,dateTime.toString(),"trigger-time");
       for(size_t i=0; i<satellites.size(); i++) {
         satId2Sensor[satellites.at(i).getID()]->triggerSense();
         satId2ThresholdKm[satellites.at(i).getID()] =

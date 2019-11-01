@@ -8,12 +8,19 @@ Makefile
 *.csv
 
 # Executables
+bent_pipe
+test_channel
 test_date_time
 test_ground_station
 test_log
+test_receiver
 test_satellite
+test_sensor
+test_transmitter
 test_utilities
+generate_coms
 generate_constellation_configuration
+generate_constellation_tracks
 generate_ecis
 generate_gnds
 generate_ground_tracks

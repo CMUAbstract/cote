@@ -29,7 +29,7 @@ if len(sys.argv)==6:
   if dst[-1] != '/':
     dst += '/'
   for i in range(0,n):
-    with open(dst+'ground-station-'+str(id0+i).zfill(10)+'.dat',mode='w',newline='') as outfile:
+    with open(dst+'gnd-'+str(id0+i).zfill(10)+'.dat',mode='w',newline='') as outfile:
       csvwriter = csv.writer(outfile)
       csvwriter.writerow(['id','lat','lon','hae'])
 else:
@@ -44,6 +44,6 @@ for i in range(1,n):
   haes.append(0.0)
 for i in range(0,len(lons)):
   lons[i] = ((lons[i]+180.0)%360.0)-180.0
-  with open(dst+'ground-station-'+str(id0+i).zfill(10)+'.dat',mode='a',newline='') as outfile:
+  with open(dst+'gnd-'+str(id0+i).zfill(10)+'.dat',mode='a',newline='') as outfile:
     csvwriter = csv.writer(outfile)
     csvwriter.writerow([str(id0+i).zfill(10),'{:+013.9f}'.format(lat),'{:+014.9f}'.format(lons[i]),'{:+013.9f}'.format(haes[i])])
