@@ -9,6 +9,7 @@ Makefile
 
 # Executables
 bent_pipe
+frame_spaced
 test_channel
 test_date_time
 test_ground_station

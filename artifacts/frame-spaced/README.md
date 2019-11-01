@@ -1,7 +1,7 @@
 # Generate Artifact Logs
 
 This artifact sweeps through constellation populations and generates downlink
-deficits for bent-pipe configurations.
+deficits for frame-spaced configurations.
 
 ## Directory Contents
 
@@ -9,7 +9,7 @@ deficits for bent-pipe configurations.
 * [configuration](configuration/README.md): Program configuration files
 * [logs](logs/README.md): Destination directory for program logs
 * [scripts](scripts/README.md): Support scripts
-* [source](source/bent-pipe.cpp): Implementation files
+* [source](source/frame-spaced.cpp): Implementation files
 * [README.md](README.md): This document
 
 ## License

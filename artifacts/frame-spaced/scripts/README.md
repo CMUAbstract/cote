@@ -1,15 +1,9 @@
-# Generate Artifact Logs
+# Scripts
 
-This artifact sweeps through constellation populations and generates downlink
-deficits for bent-pipe configurations.
+This directory contains scripts to facilitate artifact generation.
 
 ## Directory Contents
 
-* [build](build/README.md): Compile and run the program
-* [configuration](configuration/README.md): Program configuration files
-* [logs](logs/README.md): Destination directory for program logs
-* [scripts](scripts/README.md): Support scripts
-* [source](source/bent-pipe.cpp): Implementation files
 * [README.md](README.md): This document
 
 ## License

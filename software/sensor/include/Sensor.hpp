@@ -49,6 +49,10 @@ namespace cote {
     uint64_t drainBuffer(const uint64_t& bits); // returns value <= bits
     void setBitsPerSense(const uint64_t& bits);
     void setECIPosn(const std::array<double,3>& eciPosn);
+    void setPrevSensePosnDateTime(
+     const std::array<double,3>& eciPosn, const DateTime& dateTime
+    ); // setting the previous sense position and date/time should be atomic
+       // it may need to be set without triggering a data collect (thus public)
     virtual void update(const uint32_t& nanosecond);
     virtual void update(const uint8_t& second, const uint32_t& nanosecond);
     virtual void update(
@@ -59,10 +63,6 @@ namespace cote {
      const uint32_t& nanosecond
     );
   private:
-    void setPrevSensePosnDateTime(
-     const std::array<double,3>& eciPosn, const DateTime& dateTime
-    ); // setting the previous sense position and date/time should be atomic
-       // it should also be handled automatically and internally (thus private)
     bool senseTrigger;                  // If true, sense event at next update
     uint64_t bitsBuffered;              // bits of data buffered on device
     uint64_t bitsPerSense;              // bits per sense event
