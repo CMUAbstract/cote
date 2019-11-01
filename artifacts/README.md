@@ -11,6 +11,13 @@ Programs that generate research artifacts.
   a polar orbit with polar ground stations. The scripts sweep through a
   collection of constellation populations and collate the corresponding downlink
   deficit.
+* [close-spaced](close-spaced/README.md): The included source code simulates a
+  constellation of satellites with camera sensors that collectively capture
+  tiled observations at the ground track frame rate and attempt to downlink all
+  data to ground stations. The included scripts generate logs for a close-spaced
+  constellation in a polar orbit with polar ground stations. The scripts sweep
+  through a collection of constellation populations and collate the
+  corresponding downlink deficit.
 * [frame-spaced](frame-spaced/README.md): The included source code simulates a
   constellation of satellites with camera sensors that collectively capture
   observations at the ground track frame rate and attempt to downlink all data
