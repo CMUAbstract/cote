@@ -40,6 +40,7 @@ namespace cote { namespace cnst {
   const double   RAD_PER_DEG    = 0.01745329251994329577; // radians per degree
   const double   RAD_PER_REV    = 6.28318530717958647692; // rads per revolution
   const double   M_PER_KM       = 1000.0;                 // meters per km
+  const double   KM_PER_AU      = 149597870.700;          // kilometers per AU
 
   // Space Track Report No. 3
   // See cote/references/hoots1980models.pdf

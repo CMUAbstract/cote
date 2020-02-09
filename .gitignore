@@ -26,3 +26,4 @@ generate_constellation_tracks
 generate_ecis
 generate_gnds
 generate_ground_tracks
+generate_sun_azel

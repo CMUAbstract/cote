@@ -699,6 +699,33 @@ namespace cote { namespace util {
     return separationVector;
   }
 
+  std::array<double,3> calcSunEciPosnKm(
+   const double& julianDay, const uint32_t& second, const uint32_t& nanosecond
+  ) {
+    const double JD =
+     julianDay+(
+      static_cast<double>(second)+
+      static_cast<double>(nanosecond)/static_cast<double>(cnst::NS_PER_SEC)
+     )/static_cast<double>(cnst::SEC_PER_DAY);
+    const double n = JD-2451545.0;
+    const double g_deg = 357.528+0.9856003*n;
+    const double g_rad = cnst::RAD_PER_DEG*g_deg;
+    const double R_au =
+     1.00014-0.01671*std::cos(g_rad)-0.00014*std::cos(2.0*g_rad);
+    const double L_deg = 280.460+0.9856474*n;
+    const double lambda_deg =
+     L_deg+1.915*std::sin(g_rad)+0.020*std::sin(2.0*g_rad);
+    const double lambda_rad = cnst::RAD_PER_DEG*lambda_deg;
+    const double epsilon_deg = 23.439-0.0000004*n;
+    const double epsilon_rad = cnst::RAD_PER_DEG*epsilon_rad;
+    std::array<double,3> sunEciPosnKm = {
+     cnst::KM_PER_AU*R_au*std::cos(lambda_rad),
+     cnst::KM_PER_AU*R_au*std::cos(epsilon_rad)*std::sin(lambda_rad),
+     cnst::KM_PER_AU*R_au*std::sin(epsilon_rad)*std::sin(lambda_rad)
+    };
+    return sunEciPosnKm;
+  }
+
   double calcAtmosphericLoss() {
     return 1.0;
   }

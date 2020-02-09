@@ -293,6 +293,18 @@ namespace cote { namespace util {
    const std::array<double,3>& end, const std::array<double,3>& start
   );
 
+  // Calculate the ECI position vector of the sun in kilometers
+  // Parameters:
+  //  julianDay: Julian days up to midnight of the UT1 Gregorian day of interest
+  //  second: UT1 seconds since midnight of the Gregorian date of interest
+  //  nanosecond: UT1 nanoseconds since Julian day + second
+  // Returns:
+  //  The (x,y,z) ECI position vector of the sun in kilometers
+  // Reference: The Astronomical Almanac
+  std::array<double,3> calcSunEciPosnKm(
+   const double& julianDay, const uint32_t& second, const uint32_t& nanosecond
+  );
+
   double calcAtmosphericLoss();
 
   double calcSystemNoiseTemp(
