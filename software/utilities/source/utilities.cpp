@@ -726,6 +726,57 @@ namespace cote { namespace util {
     return sunEciPosnKm;
   }
 
+  double calcAngularRadius(const double& radiusKm, const double& distanceKm) {
+    return std::asin(radiusKm/distanceKm);
+  }
+
+  double dotProduct(
+   const std::array<double,3>& vector1, const std::array<double,3>& vector2
+  ) {
+    return
+     vector1.at(0)*vector2.at(0)+vector1.at(1)*vector2.at(1)+
+     vector1.at(2)*vector2.at(2);
+  }
+
+  double calcAngleBetween(
+   const std::array<double,3>& vector1, const std::array<double,3>& vector2
+  ) {
+    return std::acos(
+     dotProduct(vector1,vector2)/(magnitude(vector1)*magnitude(vector2))
+    );
+  }
+
+  double calcSunOcclusionFactor(
+   const std::array<double,3>& satEciKm, const std::array<double,3>& sunEciKm
+  ) {
+    std::array<double,3> earthEciKm = {0.0,0.0,0.0};
+    std::array<double,3> satToEarth = calcSeparationVector(earthEciKm,satEciKm);
+    std::array<double,3> satToSun   = calcSeparationVector(sunEciKm,  satEciKm);
+    double angRadiusEarth =
+     calcAngularRadius(cnst::WGS_84_A,util::magnitude(satToEarth));
+    double angRadiusSun =
+     calcAngularRadius(cnst::SUN_RADIUS_KM,util::magnitude(satToSun));
+    double angBetweenEarthSun = calcAngleBetween(satToEarth,satToSun);
+    double intersectionChordLengthRadicand =
+     (-1.0*angBetweenEarthSun+angRadiusSun-angRadiusEarth)*
+     (-1.0*angBetweenEarthSun-angRadiusSun+angRadiusEarth)*
+     (-1.0*angBetweenEarthSun+angRadiusSun+angRadiusEarth)*
+     (     angBetweenEarthSun+angRadiusSun+angRadiusEarth);
+    if(angBetweenEarthSun>=(angRadiusEarth+angRadiusSun)) {
+      return 0.0;
+    } else if(intersectionChordLengthRadicand<=0.0) {
+      return 1.0;
+    } else {
+      return
+       0.5*std::sqrt(
+        (-1.0*angBetweenEarthSun+angRadiusSun+angRadiusEarth)*
+        (     angBetweenEarthSun+angRadiusSun-angRadiusEarth)*
+        (     angBetweenEarthSun-angRadiusSun+angRadiusEarth)*
+        (     angBetweenEarthSun+angRadiusSun+angRadiusEarth)
+       )/(cnst::PI*angRadiusSun*angRadiusSun);
+    }
+  }
+
   double calcAtmosphericLoss() {
     return 1.0;
   }

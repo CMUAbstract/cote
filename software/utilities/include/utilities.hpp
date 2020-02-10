@@ -305,6 +305,54 @@ namespace cote { namespace util {
    const double& julianDay, const uint32_t& second, const uint32_t& nanosecond
   );
 
+  // Calculate the angular radius of a sphere at a given distance
+  // Parameters:
+  //  radiusKm: the actual radius of the sphere in kilometers
+  //  distanceKm: the distance (km) from the observer to the sphere center
+  // Returns:
+  //  The angular radius of the sphere in radians
+  // Reference: Standard calculation
+  double calcAngularRadius(const double& radiusKm, const double& distanceKm);
+
+  // Calculate the dot product of two vectors
+  // Parameters:
+  //  vector1: one of the vectors of interest
+  //  vector2: the other vector of interest
+  // Returns:
+  //  The dot product of the two vectors
+  // Reference: Standard calculation
+  double dotProduct(
+   const std::array<double,3>& vector1, const std::array<double,3>& vector2
+  );
+
+  // Calculate the angle between two vectors
+  // Parameters:
+  //  vector1: one of the vectors of interest
+  //  vector2: the other vector of interest
+  // Returns:
+  //  The angle [0,pi] between the two vectors
+  // Reference: Standard calculation
+  double calcAngleBetween(
+   const std::array<double,3>& vector1, const std::array<double,3>& vector2
+  );
+
+  // Calculate the fraction of the Sun occluded by the Earth from the
+  //  perspective of the satellite. Note that this function assumes that the Sun
+  //  appears smaller than the Earth from the perspective of the satellite,
+  //  which is a good assumption so long as the satellite orbit is smaller than
+  //  the Moon orbit. If this assumption does not hold true, then SPG4 would
+  //  break anyway.
+  // Parameters:
+  //  satEciKm: the ECI position of the satellite in kilometers
+  //  sunEciKm: the ECI position of the Sun in kilometers
+  // Returns:
+  //  The fraction of the Sun [0.0,1.0] that is occluded by the Earth from the
+  //  view of the satellite
+  // Reference: Geometry
+  double calcSunOcclusionFactor(
+   const std::array<double,3>& satEciKm, const std::array<double,3>& sunEciKm
+  );
+
   double calcAtmosphericLoss();
 
   double calcSystemNoiseTemp(

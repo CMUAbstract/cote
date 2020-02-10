@@ -104,4 +104,7 @@ namespace cote { namespace cnst {
   const uint8_t CHANNEL_TYPE_UPLINK    = 2;
   const double SMAD_T0 = 290.0;        // Noise reference temperature (Kelvin)
   const double SMAD_LR = 0.8912509381; // Receiver line loss factor
+
+  // Other
+  const double SUN_RADIUS_KM = 695700.0; // radius of the Sun in kilometers
 }}

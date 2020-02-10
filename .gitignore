@@ -27,3 +27,4 @@ generate_ecis
 generate_gnds
 generate_ground_tracks
 generate_sun_azel
+generate_sat_azel
