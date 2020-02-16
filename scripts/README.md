@@ -6,6 +6,15 @@ This directory contains scripts.
 
 * [setup_dependencies.sh](setup_dependencies.sh): Run this script to setup the
   library dependencies. CMake must be installed separately.
+* [setup_dependencies_mac.sh](setup_dependencies_mac.sh): Run this script to
+  setup the library dependencies on macOS Catalina or later. CMake must be
+  installed separately.
+* [generate_polar_norad_ids.py](generate_polar_norad_ids.py): Generates a list
+  of NORAD IDs for satellites in polar orbits at different altitudes
+* [generate_step_config_files.py](generate_step_config_files.py): Given a TLE
+  file, the number of revolutions to simulate, and the desired simulation time
+  steps, this script outputs the appropriate `num-steps.dat` and `time-step.dat`
+  configuration files
 * [README.md](README.md): This document
 
 ## License
