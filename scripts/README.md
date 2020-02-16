@@ -15,6 +15,9 @@ This directory contains scripts.
   file, the number of revolutions to simulate, and the desired simulation time
   steps, this script outputs the appropriate `num-steps.dat` and `time-step.dat`
   configuration files
+* [generate_small_step_config_files.py](generate_small_step_config_files.py):
+  Use this script to generate `num-steps.dat` and `time-step.dat` configuration
+  files when the time step is very small compared to the time for revolutions
 * [README.md](README.md): This document
 
 ## License
