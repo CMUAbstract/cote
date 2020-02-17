@@ -24,7 +24,7 @@ do
   fi
   cp tles/$tle.txt ../configuration/$tle/$tle.tle
   python3 generate_epoch_configuration_file.py ../configuration/$tle/ ../configuration/$tle/
-  python3 generate_small_step_config_files.py ../configuration/$tle/$tle.tle 2 1000 ../configuration/$tle/
+  python3 generate_small_step_config_files.py ../configuration/$tle/$tle.tle 2 100000 ../configuration/$tle/
   cp sample-config-files/sensor.dat ../configuration/$tle/
   if [ ! -d "../logs/$tle" ]
   then
