@@ -189,8 +189,8 @@ int main(int argc, char** argv) {
       satId2ThresholdKm[SAT_ID] =
        threshCoeff*cote::util::calcAltitudeKm(satEciPosn);
     }
-    // stepCount is assumed to be 1us; log position every 10s for sanity check
-    if(stepCount%10000000==0) {
+    // stepCount is assumed to be 100us; log position every 10s for sanity check
+    if(stepCount%100000==0) {
       const std::array<double,3> satEciPosn = satellite.getECIPosn();
       std::ostringstream oss;
       oss << "sat-" << std::setw(5) << std::setfill('0') << SAT_ID;
