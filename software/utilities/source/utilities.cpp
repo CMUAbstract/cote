@@ -717,7 +717,7 @@ namespace cote { namespace util {
      L_deg+1.915*std::sin(g_rad)+0.020*std::sin(2.0*g_rad);
     const double lambda_rad = cnst::RAD_PER_DEG*lambda_deg;
     const double epsilon_deg = 23.439-0.0000004*n;
-    const double epsilon_rad = cnst::RAD_PER_DEG*epsilon_rad;
+    const double epsilon_rad = cnst::RAD_PER_DEG*epsilon_deg;
     std::array<double,3> sunEciPosnKm = {
      cnst::KM_PER_AU*R_au*std::cos(lambda_rad),
      cnst::KM_PER_AU*R_au*std::cos(epsilon_rad)*std::sin(lambda_rad),
