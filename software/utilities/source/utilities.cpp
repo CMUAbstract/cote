@@ -12,7 +12,7 @@
 // software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 
 // Standard library
-#include <array>           // array
+#include <array>           // array, round
 #include <cmath>           // fmod
 #include <cstdint>         // int16_t, uint8_t, int32_t
 #include <fstream>         // ifstream
@@ -775,6 +775,25 @@ namespace cote { namespace util {
         (     angBetweenEarthSun+angRadiusSun+angRadiusEarth)
        )/(cnst::PI*angRadiusSun*angRadiusSun);
     }
+  }
+
+  uint64_t calcTileCountForMaxAcc(
+   const std::array<double,3>& satEciPosn, const double& focalLengthM,
+   const double& pixelSizeM, const double& featureSizeM,
+   const uint32_t& nnTargetFeatureSizePx, const uint32_t& nnInputSizePx,
+   const uint32_t& gtfHPx, const uint32_t& gtfWPx
+  ) {
+    const double satAltKm = cote::util::calcAltitudeKm(satEciPosn);
+    const double featureSizePx =
+     (focalLengthM/(pixelSizeM*satAltKm*cote::cnst::M_PER_KM))*featureSizeM;
+    const uint32_t tileSizePx = static_cast<uint32_t>(std::round(
+     (featureSizePx/static_cast<double>(nnTargetFeatureSizePx))*
+     static_cast<double>(nnInputSizePx)
+    ));
+    const uint64_t tileCount = static_cast<uint64_t>(
+     std::round(static_cast<double>(gtfHPx)/static_cast<double>(tileSizePx))*
+     std::round(static_cast<double>(gtfWPx)/static_cast<double>(tileSizePx)));
+    return tileCount;
   }
 
   double calcAtmosphericLoss() {

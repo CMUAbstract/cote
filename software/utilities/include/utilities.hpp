@@ -353,6 +353,24 @@ namespace cote { namespace util {
    const std::array<double,3>& satEciKm, const std::array<double,3>& sunEciKm
   );
 
+  // Calculate the number of tiles per ground track frame in order to maximize
+  //  object detection inference accuracy
+  // Parameters:
+  //  satEciPosn: the return value from satellite.getECIPosn()
+  //  focalLengthM: the camera focal length in meters
+  //  pixelSizeM: the size in meters of each pixel sensor
+  //  featureSizeM: the (square) size in meters of the target feature
+  //  nnTargetFeatureSizePx: the (square) size in px that the NN is best for
+  //  nnInputSizePx: the (square) size in px that the NN expects for input
+  //  gtfHPx: the height of the full ground track frame in pixels
+  //  gtfWPx: the width of the full ground track frame in pixels
+  uint64_t calcTileCountForMaxAcc(
+   const std::array<double,3>& satEciPosn, const double& focalLengthM,
+   const double& pixelSizeM, const double& featureSizeM,
+   const uint32_t& nnTargetFeatureSizePx, const uint32_t& nnInputSizePx,
+   const uint32_t& gtfHPx, const uint32_t& gtfWPx
+  );
+
   double calcAtmosphericLoss();
 
   double calcSystemNoiseTemp(
