@@ -10,8 +10,14 @@ A cote is a shelter for carrier pigeons.
 
 **Dependencies**
 
-* A C++17 compiler
+* A C++ compiler
 * CMake for building Makefiles
+
+```bash
+sudo apt install build-essential cmake
+cd $HOME/git-repos/cote/scripts
+./setup_dependencies.sh $HOME/sw
+```
 
 ## Directory Contents
 

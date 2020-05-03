@@ -311,7 +311,7 @@ namespace cote { namespace util {
   //  distanceKm: the distance (km) from the observer to the sphere center
   // Returns:
   //  The angular radius of the sphere in radians
-  // Reference: Standard calculation
+  // Reference: Geometry; see https://en.wikipedia.org/wiki/Angular_diameter
   double calcAngularRadius(const double& radiusKm, const double& distanceKm);
 
   // Calculate the dot product of two vectors
@@ -348,7 +348,8 @@ namespace cote { namespace util {
   // Returns:
   //  The fraction of the Sun [0.0,1.0] that is occluded by the Earth from the
   //  view of the satellite
-  // Reference: Geometry
+  // Reference: Geometry;
+  //  see https://mathworld.wolfram.com/Circle-CircleIntersection.html
   double calcSunOcclusionFactor(
    const std::array<double,3>& satEciKm, const std::array<double,3>& sunEciKm
   );

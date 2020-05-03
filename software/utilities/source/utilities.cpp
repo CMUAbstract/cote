@@ -768,12 +768,22 @@ namespace cote { namespace util {
       return 1.0;
     } else {
       return
-       0.5*std::sqrt(
-        (-1.0*angBetweenEarthSun+angRadiusSun+angRadiusEarth)*
-        (     angBetweenEarthSun+angRadiusSun-angRadiusEarth)*
-        (     angBetweenEarthSun-angRadiusSun+angRadiusEarth)*
-        (     angBetweenEarthSun+angRadiusSun+angRadiusEarth)
-       )/(cnst::PI*angRadiusSun*angRadiusSun);
+       (
+        std::pow(angRadiusSun,2.0)*std::acos(
+         (std::pow(angBetweenEarthSun,2.0)+std::pow(angRadiusSun,2.0)-
+          std::pow(angRadiusEarth,2.0))/(2.0*angBetweenEarthSun*angRadiusSun)
+        )+
+        std::pow(angRadiusEarth,2.0)*std::acos(
+         (std::pow(angBetweenEarthSun,2.0)+std::pow(angRadiusEarth,2.0)-
+          std::pow(angRadiusSun,2.0))/(2.0*angBetweenEarthSun*angRadiusEarth)
+        )-
+        0.5*std::sqrt(
+         (-1.0*angBetweenEarthSun+angRadiusSun+angRadiusEarth)*
+         (     angBetweenEarthSun+angRadiusSun-angRadiusEarth)*
+         (     angBetweenEarthSun-angRadiusSun+angRadiusEarth)*
+         (     angBetweenEarthSun+angRadiusSun+angRadiusEarth)
+        )
+       )/(cnst::PI*std::pow(angRadiusSun,2.0));
     }
   }
 

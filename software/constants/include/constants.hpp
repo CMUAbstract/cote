@@ -105,6 +105,10 @@ namespace cote { namespace cnst {
   const double SMAD_T0 = 290.0;        // Noise reference temperature (Kelvin)
   const double SMAD_LR = 0.8912509381; // Receiver line loss factor
 
+  // ASTM E-490-00 Standard Extraterrestrial Spectrum Reference 2000
+  // See https://www.nrel.gov/grid/solar-resource/spectra-astm-e490.html
+  const double SOLAR_CONSTANT = 1366.1; // Units: watt per meter squared
+
   // Other
   const double SUN_RADIUS_KM = 695700.0; // radius of the Sun in kilometers
 }}
