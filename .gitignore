@@ -18,6 +18,8 @@ test_log
 test_receiver
 test_satellite
 test_sensor
+test_state_machine
+test_state_transition
 test_transmitter
 test_utilities
 generate_coms

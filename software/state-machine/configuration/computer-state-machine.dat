@@ -1,0 +1,14 @@
+initial-state:OFF
+condition:node-voltage:0.0
+condition:claimed-task-count:0
+transition:OFF->IDLE:node-voltage>=6.75,claimed-task-count==0
+transition:OFF->WORK:node-voltage>=6.75,claimed-task-count!=0
+transition:SLEEP->OFF:node-voltage<5.5
+transition:SLEEP->IDLE:node-voltage>=6.75,claimed-task-count==0
+transition:SLEEP->WORK:node-voltage>=6.75,claimed-task-count!=0
+transition:IDLE->OFF:node-voltage<5.5
+transition:IDLE->SLEEP:node-voltage<5.75,node-voltage>=5.5
+transition:IDLE->WORK:node-voltage>=5.75,claimed-task-count!=0
+transition:WORK->OFF:node-voltage<5.5
+transition:WORK->SLEEP:node-voltage<5.75,node-voltage>=5.5
+transition:WORK->IDLE:node-voltage>=5.75,claimed-task-count==0
