@@ -20,9 +20,6 @@
 #include <utility>             // move
 #include <vector>              // vector
 
-#include <iostream> // cout
-#include <ostream>  // endl
-
 // cote library
 #include <Log.hpp>             // Log
 #include <StateMachine.hpp>    // StateMachine
@@ -31,76 +28,222 @@
 namespace cote {
   StateMachine::StateMachine(
    const std::string& configFile, const uint32_t& id, Log* const log
-  ) : id(id), log(log) {
-    // Set up to parse configuration file
+  ) : currentState(""), id(id), log(log) {
+    // Parse configuration file
     std::ifstream configHandle(configFile);
     std::string line = "";
-    std::size_t delimiterIndex = 0;
-    // Parse the first line, which should follow the pattern initial-state:STATE
-    std::getline(configHandle,line);
-    delimiterIndex = line.find(":",0);
-    std::string initialStateLabel = line.substr(0,delimiterIndex);
-    this->currentState = "";
-    if(initialStateLabel=="initial-state") {
-      this->currentState = line.substr(
-       0+delimiterIndex+std::string(":").size(),std::string::npos
-      );
-    }
-    // Parse the conditions and initial values
-    while(
-     std::getline(configHandle,line) &&
-     line.substr(0,line.find(":",0))=="condition"
-    ) {
+    while(std::getline(configHandle,line)) {
+      std::size_t labelEndIndex = line.find(":",0);
+      std::string label = line.substr(0,labelEndIndex);
       line =
-       line.substr(line.find(":",0)+std::string(":").size(),std::string::npos);
-      std::string conditionName = line.substr(0,line.find(":",0));
-      double conditionInitialValue = std::stod(
-       line.substr(line.find(":",0)+std::string(":").size(),std::string::npos)
-      );
-      this->conditionValues[conditionName] = conditionInitialValue;
-    }
-    // Parse the transitions
-    if(line.substr(0,line.find(":",0))=="transition") {
-      // Parse the source state
-      std::size_t startIndex = line.find(":",0)+std::string(":").size();
-      std::size_t endIndex = line.find("->",0);
-      std::string srcStateString = line.substr(startIndex,endIndex-startIndex);
-      if(this->stateTransitions.count(srcStateString)==0) {
-        this->stateTransitions[srcStateString] = std::vector<StateTransition>();
-      }
-      this->stateTransitions.at(srcStateString).push_back(
-       cote::StateTransition(line)
-      );
-      while(
-       std::getline(configHandle,line) &&
-       line.substr(0,line.find(":",0))=="transition"
-      ) {
-        startIndex = line.find(":",0)+std::string(":").size();
-        endIndex = line.find("->",0);
+       line.substr(labelEndIndex+std::string(":").size(),std::string::npos);
+      if(label=="constant") {
+        std::size_t delimiterIndex = line.find(":",0);
+        std::string constantName = line.substr(0,delimiterIndex);
+        double constantValue = std::stod(
+         line.substr(delimiterIndex+std::string(":").size(),std::string::npos)
+        );
+        this->constantValues[constantName] = constantValue;
+      } else if(label=="variable") {
+        std::size_t delimiterIndex = line.find(":",0);
+        std::string variableName = line.substr(0,delimiterIndex);
+        double variableValue = std::stod(
+         line.substr(delimiterIndex+std::string(":").size(),std::string::npos)
+        );
+        this->variableValues[variableName] = variableValue;
+      } else if(label=="enter-state") {
+        std::size_t delimiterIndex = line.find(":",0);
+        std::string stateName = line.substr(0,delimiterIndex);
+        line =
+         line.substr(delimiterIndex+std::string(":").size(),std::string::npos);
+        std::size_t lineIndex = 0;
+        while(lineIndex<line.size()) {
+          delimiterIndex = line.find(",",lineIndex);
+          std::string enterChange =
+           line.substr(lineIndex,delimiterIndex-lineIndex);
+          std::size_t operatorIndex = 0;
+          std::string variableName = "";
+          std::string assignmentOperator = "";
+          double variableValue = 0.0;
+          if(enterChange.find("+=",0)!=std::string::npos) {
+            operatorIndex = enterChange.find("+=",0);
+            assignmentOperator = "+=";
+          } else if(enterChange.find("-=",0)!=std::string::npos) {
+            operatorIndex = enterChange.find("-=",0);
+            assignmentOperator = "-=";
+          } else if(enterChange.find("*=",0)!=std::string::npos) {
+            operatorIndex = enterChange.find("*=",0);
+            assignmentOperator = "*=";
+          } else if(enterChange.find("=",0)!=std::string::npos) {
+            operatorIndex = enterChange.find("=",0);
+            assignmentOperator = "=";
+          }
+          variableName = enterChange.substr(0,operatorIndex);
+          variableValue = std::stod(enterChange.substr(
+           operatorIndex+assignmentOperator.size(),std::string::npos
+          ));
+          if(this->enterStateValues.count(stateName)==0) {
+            this->enterStateValues[stateName] =
+             std::vector<std::tuple<std::string,std::string,double>>();
+          }
+          this->enterStateValues.at(stateName).push_back(
+           std::make_tuple(variableName,assignmentOperator,variableValue)
+          );
+          lineIndex = (
+           delimiterIndex==std::string::npos ?
+           delimiterIndex : delimiterIndex+std::string(",").size()
+          );
+        }
+      } else if(label=="exit-state") {
+        std::size_t delimiterIndex = line.find(":",0);
+        std::string stateName = line.substr(0,delimiterIndex);
+        line =
+         line.substr(delimiterIndex+std::string(":").size(),std::string::npos);
+        std::size_t lineIndex = 0;
+        while(lineIndex<line.size()) {
+          delimiterIndex = line.find(",",lineIndex);
+          std::string exitChange =
+           line.substr(lineIndex,delimiterIndex-lineIndex);
+          std::size_t operatorIndex = 0;
+          std::string variableName = "";
+          std::string assignmentOperator = "";
+          double variableValue = 0.0;
+          if(exitChange.find("+=",0)!=std::string::npos) {
+            operatorIndex = exitChange.find("+=",0);
+            assignmentOperator = "+=";
+          } else if(exitChange.find("-=",0)!=std::string::npos) {
+            operatorIndex = exitChange.find("-=",0);
+            assignmentOperator = "-=";
+          } else if(exitChange.find("*=",0)!=std::string::npos) {
+            operatorIndex = exitChange.find("*=",0);
+            assignmentOperator = "*=";
+          } else if(exitChange.find("=",0)!=std::string::npos) {
+            operatorIndex = exitChange.find("=",0);
+            assignmentOperator = "=";
+          }
+          variableName = exitChange.substr(0,operatorIndex);
+          variableValue = std::stod(exitChange.substr(
+           operatorIndex+assignmentOperator.size(),std::string::npos
+          ));
+          if(this->exitStateValues.count(stateName)==0) {
+            this->exitStateValues[stateName] =
+             std::vector<std::tuple<std::string,std::string,double>>();
+          }
+          this->exitStateValues.at(stateName).push_back(
+           std::make_tuple(variableName,assignmentOperator,variableValue)
+          );
+          lineIndex = (
+           delimiterIndex==std::string::npos ?
+           delimiterIndex : delimiterIndex+std::string(",").size()
+          );
+        }
+      } else if(label=="transition") {
+        // Find the delimiter between the transition conditions and the
+        // transition changes
+        std::size_t transitionChangeIndex = line.find(":",0);
+        transitionChangeIndex = (
+         transitionChangeIndex==std::string::npos ?
+         transitionChangeIndex : transitionChangeIndex+std::string(":").size()
+        );
+        transitionChangeIndex = line.find(":",transitionChangeIndex);
+        // Record the transition conditions, source state, and destination state
+        std::string transitionConditions =
+         "transition:"+line.substr(0,transitionChangeIndex);
+        std::size_t srcStartIndex =
+         transitionConditions.find(":",0)+std::string(":").size();
+        std::size_t srcEndIndex = transitionConditions.find("->",0);
+        std::size_t dstStartIndex = srcEndIndex+std::string("->").size();
+        std::size_t dstEndIndex = transitionConditions.find(":",dstStartIndex);
         std::string srcStateString =
-         line.substr(startIndex,endIndex-startIndex);
+         transitionConditions.substr(srcStartIndex,srcEndIndex-srcStartIndex);
+        std::string dstStateString =
+         transitionConditions.substr(dstStartIndex,dstEndIndex-dstStartIndex);
         if(this->stateTransitions.count(srcStateString)==0) {
           this->stateTransitions[srcStateString] =
            std::vector<StateTransition>();
         }
         this->stateTransitions.at(srcStateString).push_back(
-         cote::StateTransition(line)
+         cote::StateTransition(transitionConditions)
         );
+        // Record the transition changes
+        transitionChangeIndex = (
+         transitionChangeIndex==std::string::npos ?
+         transitionChangeIndex : transitionChangeIndex+std::string(":").size()
+        );
+        std::string transitionChanges = line.substr(
+         transitionChangeIndex,std::string::npos
+        );
+        if(this->transitionValues.count(srcStateString)==0) {
+          this->transitionValues[srcStateString] = std::map<
+           std::string,std::vector<std::tuple<std::string,std::string,double>>
+          >();
+        }
+        if(this->transitionValues.at(srcStateString).count(dstStateString)==0) {
+          this->transitionValues.at(srcStateString)[dstStateString] =
+           std::vector<std::tuple<std::string,std::string,double>>();
+        }
+        transitionChangeIndex = 0;
+        while(transitionChangeIndex<transitionChanges.size()) {
+          std::size_t delimterIndex =
+           transitionChanges.find(",",transitionChangeIndex);
+          std::string transitionChange = transitionChanges.substr(
+           transitionChangeIndex, delimterIndex
+          );
+          std::size_t operatorIndex = 0;
+          std::string variableName = "";
+          std::string assignmentOperator = "";
+          double variableValue = 0.0;
+          if(transitionChange.find("+=",0)!=std::string::npos) {
+            operatorIndex = transitionChange.find("+=",0);
+            assignmentOperator = "+=";
+          } else if(transitionChange.find("-=",0)!=std::string::npos) {
+            operatorIndex = transitionChange.find("-=",0);
+            assignmentOperator = "-=";
+          } else if(transitionChange.find("*=",0)!=std::string::npos) {
+            operatorIndex = transitionChange.find("*=",0);
+            assignmentOperator = "*=";
+          } else if(transitionChange.find("=",0)!=std::string::npos) {
+            operatorIndex = transitionChange.find("=",0);
+            assignmentOperator = "=";
+          }
+          variableName = transitionChange.substr(0,operatorIndex);
+          variableValue = std::stod(transitionChange.substr(
+           operatorIndex+assignmentOperator.size(),std::string::npos
+          ));
+          this->transitionValues.at(srcStateString).at(dstStateString).push_back
+          (
+           std::make_tuple(variableName,assignmentOperator,variableValue)
+          );
+          transitionChangeIndex = (
+           delimterIndex==std::string::npos ?
+           delimterIndex : delimterIndex+std::string(",").size()
+          );
+        }
+      } else if(label=="initial-state") {
+        this->currentState = line;
       }
     }
     configHandle.close();
   }
 
   StateMachine::StateMachine(const StateMachine& stateMachine) :
-   currentState(stateMachine.getCurrentState()),
+   constantValues(stateMachine.getConstantValues()),
+   variableValues(stateMachine.getVariableValues()),
+   enterStateValues(stateMachine.getEnterStateValues()),
+   exitStateValues(stateMachine.getExitStateValues()),
+   transitionValues(stateMachine.getTransitionValues()),
    stateTransitions(stateMachine.getStateTransitions()),
-   conditionValues(stateMachine.getConditionValues()), id(stateMachine.getID()),
+   currentState(stateMachine.getCurrentState()), id(stateMachine.getID()),
    log(stateMachine.getLog()) {}
 
   StateMachine::StateMachine(StateMachine&& stateMachine) :
-   currentState(stateMachine.currentState),
+   constantValues(stateMachine.constantValues),
+   variableValues(stateMachine.variableValues),
+   enterStateValues(stateMachine.enterStateValues),
+   exitStateValues(stateMachine.exitStateValues),
+   transitionValues(stateMachine.transitionValues),
    stateTransitions(stateMachine.stateTransitions),
-   conditionValues(stateMachine.conditionValues), id(stateMachine.id),
+   currentState(stateMachine.currentState), id(stateMachine.id),
    log(stateMachine.log) {
     stateMachine.log = NULL;
   }
@@ -116,9 +259,13 @@ namespace cote {
   }
 
   StateMachine& StateMachine::operator=(StateMachine&& stateMachine) {
-    this->currentState     = stateMachine.currentState;
+    this->constantValues   = stateMachine.constantValues;
+    this->variableValues   = stateMachine.variableValues;
+    this->enterStateValues = stateMachine.enterStateValues;
+    this->exitStateValues  = stateMachine.exitStateValues;
+    this->transitionValues = stateMachine.transitionValues;
     this->stateTransitions = stateMachine.stateTransitions;
-    this->conditionValues  = stateMachine.conditionValues;
+    this->currentState     = stateMachine.currentState;
     this->id               = stateMachine.id;
     this->log              = stateMachine.log;
     stateMachine.log       = NULL;
@@ -129,8 +276,32 @@ namespace cote {
     return new StateMachine(*this);
   }
 
-  std::string StateMachine::getCurrentState() const {
-    return this->currentState;
+  std::map<std::string,double> StateMachine::getConstantValues() const {
+    return this->constantValues;
+  }
+
+  std::map<std::string,double> StateMachine::getVariableValues() const {
+    return this->variableValues;
+  }
+
+  std::map<
+   std::string,std::vector<std::tuple<std::string,std::string,double>>
+  > StateMachine::getEnterStateValues() const {
+    return this->enterStateValues;
+  }
+
+  std::map<
+   std::string,std::vector<std::tuple<std::string,std::string,double>>
+  > StateMachine::getExitStateValues() const {
+    return this->exitStateValues;
+  }
+
+  std::map<
+   std::string,std::map<
+    std::string,std::vector<std::tuple<std::string,std::string,double>>
+   >
+  > StateMachine::getTransitionValues() const {
+    return this->transitionValues;
   }
 
   std::map<std::string,std::vector<StateTransition>>
@@ -138,8 +309,8 @@ namespace cote {
     return this->stateTransitions;
   }
 
-  std::map<std::string,double> StateMachine::getConditionValues() const {
-    return this->conditionValues;
+  std::string StateMachine::getCurrentState() const {
+    return this->currentState;
   }
 
   uint32_t StateMachine::getID() const {
@@ -150,21 +321,113 @@ namespace cote {
     return this->log;
   }
 
-  void StateMachine::setCondition(
-   const std::string& condition, const double& value
+  double StateMachine::getConstantValue(const std::string& constant) const {
+    return this->constantValues.at(constant);
+  }
+
+  double StateMachine::getVariableValue(const std::string& variable) const {
+    return this->variableValues.at(variable);
+  }
+
+  void StateMachine::setVariableValue(
+   const std::string& variable, const double& value
   ) {
-    if(this->conditionValues.count(condition)!=0) {
-      this->conditionValues.at(condition) = value;
-    }
+    this->variableValues.at(variable) = value;
   }
 
   void StateMachine::updateState() {
     if(this->stateTransitions.count(this->currentState)!=0) {
-      std::vector<StateTransition> transitions =
+      std::vector<StateTransition> possibleTransitions =
        this->stateTransitions.at(this->currentState);
-      for(std::size_t i=0; i<transitions.size(); i++) {
-        if(transitions.at(i).checkConditions(this->conditionValues)) {
-          this->currentState = transitions.at(i).getDstState();
+      for(std::size_t i=0; i<possibleTransitions.size(); i++) {
+        if(possibleTransitions.at(i).checkConditions(this->variableValues)) {
+          std::string previousState = this->currentState;
+          this->currentState = possibleTransitions.at(i).getDstState();
+          // Apply exit changes
+          if(this->exitStateValues.count(previousState)!=0) {
+            for(
+             std::size_t j=0; j<this->exitStateValues.at(previousState).size();
+             j++
+            ) {
+              std::tuple<std::string,std::string,double> exitChange =
+               this->exitStateValues.at(previousState).at(j);
+              std::string variableName = std::get<0>(exitChange);
+              std::string assignmentOperator = std::get<1>(exitChange);
+              double changeValue = std::get<2>(exitChange);
+              double variableValue = this->getVariableValue(variableName);
+              if(assignmentOperator=="+=") {
+                this->setVariableValue(variableName, variableValue+changeValue);
+              } else if(assignmentOperator=="-=") {
+                this->setVariableValue(variableName, variableValue-changeValue);
+              } else if(assignmentOperator=="*=") {
+                this->setVariableValue(variableName, variableValue*changeValue);
+              } else if(assignmentOperator=="=") {
+                this->setVariableValue(variableName, changeValue);
+              }
+            }
+          }
+          // Apply transition changes
+          if(this->transitionValues.count(previousState)!=0) {
+            if(this->transitionValues.at(previousState).count(
+             this->currentState
+            )!=0) {
+              for(
+               std::size_t j=0;
+               j<this->transitionValues.at(previousState).at(
+                this->currentState
+               ).size();
+               j++
+              ) {
+                std::tuple<std::string,std::string,double> transitionChange =
+                 this->transitionValues.at(previousState).at(
+                  this->currentState
+                 ).at(j);
+                std::string variableName = std::get<0>(transitionChange);
+                std::string assignmentOperator = std::get<1>(transitionChange);
+                double changeValue = std::get<2>(transitionChange);
+                double variableValue = this->getVariableValue(variableName);
+                if(assignmentOperator=="+=") {
+                  this->setVariableValue(
+                   variableName, variableValue+changeValue
+                  );
+                } else if(assignmentOperator=="-=") {
+                  this->setVariableValue(
+                   variableName, variableValue-changeValue
+                  );
+                } else if(assignmentOperator=="*=") {
+                  this->setVariableValue(
+                   variableName, variableValue*changeValue
+                  );
+                } else if(assignmentOperator=="=") {
+                  this->setVariableValue(variableName, changeValue);
+                }
+              }
+            }
+          }
+          // Apply enter changes
+          if(this->enterStateValues.count(this->currentState)!=0) {
+            for(
+             std::size_t j=0;
+             j<this->enterStateValues.at(this->currentState).size();
+             j++
+            ) {
+              std::tuple<std::string,std::string,double> enterChange =
+               this->enterStateValues.at(this->currentState).at(j);
+              std::string variableName = std::get<0>(enterChange);
+              std::string assignmentOperator = std::get<1>(enterChange);
+              double changeValue = std::get<2>(enterChange);
+              double variableValue = this->getVariableValue(variableName);
+              if(assignmentOperator=="+=") {
+                this->setVariableValue(variableName, variableValue+changeValue);
+              } else if(assignmentOperator=="-=") {
+                this->setVariableValue(variableName, variableValue-changeValue);
+              } else if(assignmentOperator=="*=") {
+                this->setVariableValue(variableName, variableValue*changeValue);
+              } else if(assignmentOperator=="=") {
+                this->setVariableValue(variableName, changeValue);
+              }
+            }
+          }
           break;
         }
       }

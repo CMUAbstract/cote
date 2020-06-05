@@ -27,197 +27,290 @@ int main(int argc, char** argv) {
   cote::StateMachine computerStateMachine(
    "../configuration/computer-state-machine.dat",1,&log
   );
-  uint32_t time = 0;
+  double time = 0.0;
   double nodeVoltage = 5.0;
-  computerStateMachine.setCondition("node-voltage",nodeVoltage);
-  double claimedTaskCount = 0.0;
-  computerStateMachine.setCondition("claimed-task-count",claimedTaskCount);
+  computerStateMachine.setVariableValue("node-voltage",nodeVoltage);
+  computerStateMachine.setVariableValue("claimed-task-count",0.0);
   computerStateMachine.updateState();
-  log.meas(
-   cote::LogLevel::INFO, std::to_string(time), "node-voltage",
-   std::to_string(nodeVoltage)
-  );
-  log.meas(
-   cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
-   std::to_string(claimedTaskCount)
-  );
   log.meas(
    cote::LogLevel::INFO, std::to_string(time), "computer-state",
    computerStateMachine.getCurrentState()
   );
+  log.meas(
+   cote::LogLevel::INFO, std::to_string(time), "power-w",
+   std::to_string(computerStateMachine.getVariableValue("power-w"))
+  );
+  log.meas(
+   cote::LogLevel::INFO, std::to_string(time), "dummy",
+   std::to_string(computerStateMachine.getVariableValue("dummy"))
+  );
+  log.meas(
+   cote::LogLevel::INFO, std::to_string(time), "node-voltage",
+   std::to_string(computerStateMachine.getVariableValue("node-voltage"))
+  );
+  log.meas(
+   cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
+   std::to_string(computerStateMachine.getVariableValue("claimed-task-count"))
+  );
   for(std::size_t i=0; i<2; i++) {
     for(std::size_t j=0; j<20; j++) {
-      time += 1;
+      time += 0.1;
       nodeVoltage += 0.1;
-      computerStateMachine.setCondition("node-voltage",nodeVoltage);
+      computerStateMachine.setVariableValue("node-voltage",nodeVoltage);
       computerStateMachine.updateState();
-      log.meas(
-       cote::LogLevel::INFO, std::to_string(time), "node-voltage",
-       std::to_string(nodeVoltage)
-      );
-      log.meas(
-       cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
-       std::to_string(claimedTaskCount)
-      );
       log.meas(
        cote::LogLevel::INFO, std::to_string(time), "computer-state",
        computerStateMachine.getCurrentState()
       );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "power-w",
+       std::to_string(computerStateMachine.getVariableValue("power-w"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "dummy",
+       std::to_string(computerStateMachine.getVariableValue("dummy"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "node-voltage",
+       std::to_string(computerStateMachine.getVariableValue("node-voltage"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
+       std::to_string(
+        computerStateMachine.getVariableValue("claimed-task-count")
+       )
+      );
     }
-    time += 1;
-    claimedTaskCount += 1.0;
-    computerStateMachine.setCondition("claimed-task-count",claimedTaskCount);
+    time += 0.1;
+    computerStateMachine.setVariableValue("claimed-task-count",7.0);
     computerStateMachine.updateState();
-    log.meas(
-     cote::LogLevel::INFO, std::to_string(time), "node-voltage",
-     std::to_string(nodeVoltage)
-    );
-    log.meas(
-     cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
-     std::to_string(claimedTaskCount)
-    );
     log.meas(
      cote::LogLevel::INFO, std::to_string(time), "computer-state",
      computerStateMachine.getCurrentState()
     );
+    log.meas(
+     cote::LogLevel::INFO, std::to_string(time), "power-w",
+     std::to_string(computerStateMachine.getVariableValue("power-w"))
+    );
+    log.meas(
+     cote::LogLevel::INFO, std::to_string(time), "dummy",
+     std::to_string(computerStateMachine.getVariableValue("dummy"))
+    );
+    log.meas(
+     cote::LogLevel::INFO, std::to_string(time), "node-voltage",
+     std::to_string(computerStateMachine.getVariableValue("node-voltage"))
+    );
+    log.meas(
+     cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
+     std::to_string(computerStateMachine.getVariableValue("claimed-task-count"))
+    );
     for(std::size_t j=0; j<13; j++) {
-      time += 1;
+      if(computerStateMachine.getCurrentState()=="WORK") {
+        double workTimeS = computerStateMachine.getVariableValue("work-time-s");
+        workTimeS += 0.1;
+        computerStateMachine.setVariableValue("work-time-s",workTimeS);
+        while(
+         workTimeS>=computerStateMachine.getConstantValue("task-duration-s") &&
+         computerStateMachine.getVariableValue("claimed-task-count")>0
+        ) {
+          double claimedTaskCount =
+           computerStateMachine.getVariableValue("claimed-task-count");
+          claimedTaskCount -= 1.0;
+          computerStateMachine.setVariableValue(
+           "claimed-task-count",claimedTaskCount
+          );
+          workTimeS -= computerStateMachine.getConstantValue("task-duration-s");
+          computerStateMachine.setVariableValue("work-time-s",workTimeS);
+        }
+      }
+      time += 0.1;
       nodeVoltage -= 0.1;
-      computerStateMachine.setCondition("node-voltage",nodeVoltage);
+      computerStateMachine.setVariableValue("node-voltage",nodeVoltage);
       computerStateMachine.updateState();
-      log.meas(
-       cote::LogLevel::INFO, std::to_string(time), "node-voltage",
-       std::to_string(nodeVoltage)
-      );
-      log.meas(
-       cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
-       std::to_string(claimedTaskCount)
-      );
       log.meas(
        cote::LogLevel::INFO, std::to_string(time), "computer-state",
        computerStateMachine.getCurrentState()
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "power-w",
+       std::to_string(computerStateMachine.getVariableValue("power-w"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "dummy",
+       std::to_string(computerStateMachine.getVariableValue("dummy"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "node-voltage",
+       std::to_string(computerStateMachine.getVariableValue("node-voltage"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
+       std::to_string(computerStateMachine.getVariableValue("claimed-task-count"))
       );
     }
     for(std::size_t j=0; j<11; j++) {
-      time += 1;
+      time += 0.1;
       nodeVoltage += 0.1;
-      computerStateMachine.setCondition("node-voltage",nodeVoltage);
+      computerStateMachine.setVariableValue("node-voltage",nodeVoltage);
       computerStateMachine.updateState();
-      log.meas(
-       cote::LogLevel::INFO, std::to_string(time), "node-voltage",
-       std::to_string(nodeVoltage)
-      );
-      log.meas(
-       cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
-       std::to_string(claimedTaskCount)
-      );
       log.meas(
        cote::LogLevel::INFO, std::to_string(time), "computer-state",
        computerStateMachine.getCurrentState()
       );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "power-w",
+       std::to_string(computerStateMachine.getVariableValue("power-w"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "dummy",
+       std::to_string(computerStateMachine.getVariableValue("dummy"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "node-voltage",
+       std::to_string(computerStateMachine.getVariableValue("node-voltage"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
+       std::to_string(computerStateMachine.getVariableValue("claimed-task-count"))
+      );
     }
-    for(std::size_t j=0; j<3; j++) {
-      time += 1;
+    for(std::size_t j=0; j<2; j++) {
+      if(computerStateMachine.getCurrentState()=="WORK") {
+        double workTimeS = computerStateMachine.getVariableValue("work-time-s");
+        workTimeS += 0.1;
+        computerStateMachine.setVariableValue("work-time-s",workTimeS);
+        while(
+         workTimeS>=computerStateMachine.getConstantValue("task-duration-s") &&
+         computerStateMachine.getVariableValue("claimed-task-count")>0
+        ) {
+          double claimedTaskCount =
+           computerStateMachine.getVariableValue("claimed-task-count");
+          claimedTaskCount -= 1.0;
+          computerStateMachine.setVariableValue(
+           "claimed-task-count",claimedTaskCount
+          );
+          workTimeS -= computerStateMachine.getConstantValue("task-duration-s");
+          computerStateMachine.setVariableValue("work-time-s",workTimeS);
+        }
+      }
+      time += 0.1;
       nodeVoltage -= 0.1;
-      computerStateMachine.setCondition("node-voltage",nodeVoltage);
+      computerStateMachine.setVariableValue("node-voltage",nodeVoltage);
       computerStateMachine.updateState();
-      log.meas(
-       cote::LogLevel::INFO, std::to_string(time), "node-voltage",
-       std::to_string(nodeVoltage)
-      );
-      log.meas(
-       cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
-       std::to_string(claimedTaskCount)
-      );
       log.meas(
        cote::LogLevel::INFO, std::to_string(time), "computer-state",
        computerStateMachine.getCurrentState()
       );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "power-w",
+       std::to_string(computerStateMachine.getVariableValue("power-w"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "dummy",
+       std::to_string(computerStateMachine.getVariableValue("dummy"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "node-voltage",
+       std::to_string(computerStateMachine.getVariableValue("node-voltage"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
+       std::to_string(computerStateMachine.getVariableValue("claimed-task-count"))
+      );
     }
-    time += 1;
-    claimedTaskCount -= 1.0;
-    computerStateMachine.setCondition("claimed-task-count",claimedTaskCount);
-    computerStateMachine.updateState();
-    log.meas(
-     cote::LogLevel::INFO, std::to_string(time), "node-voltage",
-     std::to_string(nodeVoltage)
-    );
-    log.meas(
-     cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
-     std::to_string(claimedTaskCount)
-    );
-    log.meas(
-     cote::LogLevel::INFO, std::to_string(time), "computer-state",
-     computerStateMachine.getCurrentState()
-    );
-    for(std::size_t j=0; j<5; j++) {
-      time += 1;
+    for(std::size_t j=0; j<4; j++) {
+      time += 0.1;
       nodeVoltage += 0.1;
-      computerStateMachine.setCondition("node-voltage",nodeVoltage);
+      computerStateMachine.setVariableValue("node-voltage",nodeVoltage);
       computerStateMachine.updateState();
-      log.meas(
-       cote::LogLevel::INFO, std::to_string(time), "node-voltage",
-       std::to_string(nodeVoltage)
-      );
-      log.meas(
-       cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
-       std::to_string(claimedTaskCount)
-      );
       log.meas(
        cote::LogLevel::INFO, std::to_string(time), "computer-state",
        computerStateMachine.getCurrentState()
       );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "power-w",
+       std::to_string(computerStateMachine.getVariableValue("power-w"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "dummy",
+       std::to_string(computerStateMachine.getVariableValue("dummy"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "node-voltage",
+       std::to_string(computerStateMachine.getVariableValue("node-voltage"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
+       std::to_string(computerStateMachine.getVariableValue("claimed-task-count"))
+      );
     }
-    time += 1;
-    claimedTaskCount += 2.0;
-    computerStateMachine.setCondition("claimed-task-count",claimedTaskCount);
+    time += 0.1;
+    computerStateMachine.setVariableValue("claimed-task-count",1.0);
     computerStateMachine.updateState();
-    log.meas(
-     cote::LogLevel::INFO, std::to_string(time), "node-voltage",
-     std::to_string(nodeVoltage)
-    );
-    log.meas(
-     cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
-     std::to_string(claimedTaskCount)
-    );
     log.meas(
      cote::LogLevel::INFO, std::to_string(time), "computer-state",
      computerStateMachine.getCurrentState()
+    );
+    log.meas(
+     cote::LogLevel::INFO, std::to_string(time), "power-w",
+     std::to_string(computerStateMachine.getVariableValue("power-w"))
+    );
+    log.meas(
+     cote::LogLevel::INFO, std::to_string(time), "dummy",
+     std::to_string(computerStateMachine.getVariableValue("dummy"))
+    );
+    log.meas(
+     cote::LogLevel::INFO, std::to_string(time), "node-voltage",
+     std::to_string(computerStateMachine.getVariableValue("node-voltage"))
+    );
+    log.meas(
+     cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
+     std::to_string(computerStateMachine.getVariableValue("claimed-task-count"))
     );
     for(std::size_t j=0; j<2; j++) {
-      time += 1;
+      if(computerStateMachine.getCurrentState()=="WORK") {
+        double workTimeS = computerStateMachine.getVariableValue("work-time-s");
+        workTimeS += 0.1;
+        computerStateMachine.setVariableValue("work-time-s",workTimeS);
+        while(
+         workTimeS>=computerStateMachine.getConstantValue("task-duration-s") &&
+         computerStateMachine.getVariableValue("claimed-task-count")>0
+        ) {
+          double claimedTaskCount =
+           computerStateMachine.getVariableValue("claimed-task-count");
+          claimedTaskCount -= 1.0;
+          computerStateMachine.setVariableValue(
+           "claimed-task-count",claimedTaskCount
+          );
+          workTimeS -= computerStateMachine.getConstantValue("task-duration-s");
+          computerStateMachine.setVariableValue("work-time-s",workTimeS);
+        }
+      }
+      time += 0.1;
       nodeVoltage -= 1.0;
-      computerStateMachine.setCondition("node-voltage",nodeVoltage);
+      computerStateMachine.setVariableValue("node-voltage",nodeVoltage);
       computerStateMachine.updateState();
-      log.meas(
-       cote::LogLevel::INFO, std::to_string(time), "node-voltage",
-       std::to_string(nodeVoltage)
-      );
-      log.meas(
-       cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
-       std::to_string(claimedTaskCount)
-      );
       log.meas(
        cote::LogLevel::INFO, std::to_string(time), "computer-state",
        computerStateMachine.getCurrentState()
       );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "power-w",
+       std::to_string(computerStateMachine.getVariableValue("power-w"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "dummy",
+       std::to_string(computerStateMachine.getVariableValue("dummy"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "node-voltage",
+       std::to_string(computerStateMachine.getVariableValue("node-voltage"))
+      );
+      log.meas(
+       cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
+       std::to_string(computerStateMachine.getVariableValue("claimed-task-count"))
+      );
     }
-    time += 1;
-    claimedTaskCount -= 2.0;
-    computerStateMachine.setCondition("claimed-task-count",claimedTaskCount);
-    computerStateMachine.updateState();
-    log.meas(
-     cote::LogLevel::INFO, std::to_string(time), "node-voltage",
-     std::to_string(nodeVoltage)
-    );
-    log.meas(
-     cote::LogLevel::INFO, std::to_string(time), "claimed-task-count",
-     std::to_string(claimedTaskCount)
-    );
-    log.meas(
-     cote::LogLevel::INFO, std::to_string(time), "computer-state",
-     computerStateMachine.getCurrentState()
-    );
   }
   // Write out logs
   log.writeAll();
