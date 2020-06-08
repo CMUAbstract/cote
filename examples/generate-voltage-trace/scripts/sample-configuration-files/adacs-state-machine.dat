@@ -1,0 +1,7 @@
+variable:power-w:0.0
+variable:node-voltage:0.0
+enter-state:OFF:power-w=0.0
+enter-state:NADIR:power-w=1.13
+transition:OFF->NADIR:node-voltage>=5.0
+transition:NADIR->OFF:node-voltage<5.0
+initial-state:OFF

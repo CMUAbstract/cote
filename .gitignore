@@ -33,3 +33,4 @@ generate_ground_tracks
 generate_sun_azel
 generate_sat_azel
 generate_irradiance_trace
+generate_voltage_trace
