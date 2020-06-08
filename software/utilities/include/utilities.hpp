@@ -372,6 +372,30 @@ namespace cote { namespace util {
    const uint32_t& gtfHPx, const uint32_t& gtfWPx
   );
 
+  // Calculate the discriminant of the node voltage equation
+  // Parameters:
+  //  chargeC: the charge in the capacitor in Coulomb
+  //  capacitanceF: the capacitance of the capacitor in Farad
+  //  currentA: the current from the solar array in Ampere
+  //  esrOhm: the equivalent series resistance (ESR) of the capacitor in Ohm
+  //  powerW: the total power draw of the loads in Watt
+  double calcNodeVoltageDiscriminant(
+   const double& chargeC, const double& capacitanceF, const double& currentA,
+   const double& esrOhm, const double& powerW
+  );
+
+  // Calculate the the node voltage
+  // Parameters:
+  //  discriminant: the value returned by calcNodeVoltageDiscriminant()
+  //  chargeC: the charge in the capacitor in Coulomb
+  //  capacitanceF: the capacitance of the capacitor in Farad
+  //  currentA: the current from the solar array in Ampere
+  //  esrOhm: the equivalent series resistance (ESR) of the capacitor in Ohm
+  double calcNodeVoltage(
+   const double& discriminant, const double& chargeC,
+   const double& capacitanceF, const double& currentA, const double& esrOhm
+  );
+
   double calcAtmosphericLoss();
 
   double calcSystemNoiseTemp(

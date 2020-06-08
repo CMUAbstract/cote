@@ -806,6 +806,20 @@ namespace cote { namespace util {
     return tileCount;
   }
 
+  double calcNodeVoltageDiscriminant(
+   const double& chargeC, const double& capacitanceF, const double& currentA,
+   const double& esrOhm, const double& powerW
+  ) {
+    return std::pow(chargeC/capacitanceF+currentA*esrOhm,2.0)-4.0*powerW*esrOhm;
+  }
+
+  double calcNodeVoltage(
+   const double& discriminant, const double& chargeC,
+   const double& capacitanceF, const double& currentA, const double& esrOhm
+  ) {
+    return 0.5*(chargeC/capacitanceF+currentA*esrOhm+std::sqrt(discriminant));
+  }
+
   double calcAtmosphericLoss() {
     return 1.0;
   }
