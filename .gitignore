@@ -11,6 +11,7 @@ Makefile
 bent_pipe
 close_spaced
 frame_spaced
+test_capacitor
 test_channel
 test_date_time
 test_ground_station
