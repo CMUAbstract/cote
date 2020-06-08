@@ -58,6 +58,7 @@ namespace cote {
     double getConstantValue(const std::string& constant) const;
     double getVariableValue(const std::string& variable) const;
     void setVariableValue(const std::string& variable, const double& value);
+    void setCurrentState(const std::string& state);
     void updateState();
   private:
     // constantValues map

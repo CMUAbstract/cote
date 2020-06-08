@@ -12,6 +12,7 @@
 // software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 
 // Standard library
+#include <algorithm>           // min
 #include <cstddef>             // size_t
 #include <cstdint>             // uint32_t
 #include <fstream>             // ifstream
@@ -171,7 +172,7 @@ namespace cote {
          transitionChangeIndex : transitionChangeIndex+std::string(":").size()
         );
         std::string transitionChanges = line.substr(
-         transitionChangeIndex,std::string::npos
+         std::min(transitionChangeIndex,line.size()),std::string::npos
         );
         if(this->transitionValues.count(srcStateString)==0) {
           this->transitionValues[srcStateString] = std::map<
@@ -429,6 +430,58 @@ namespace cote {
             }
           }
           break;
+        }
+      }
+    }
+  }
+
+  void StateMachine::setCurrentState(const std::string& state) {
+    std::string previousState = this->currentState;
+    this->currentState = state;
+    // Apply exit changes
+    if(this->exitStateValues.count(previousState)!=0) {
+      for(
+       std::size_t j=0; j<this->exitStateValues.at(previousState).size();
+       j++
+      ) {
+        std::tuple<std::string,std::string,double> exitChange =
+         this->exitStateValues.at(previousState).at(j);
+        std::string variableName = std::get<0>(exitChange);
+        std::string assignmentOperator = std::get<1>(exitChange);
+        double changeValue = std::get<2>(exitChange);
+        double variableValue = this->getVariableValue(variableName);
+        if(assignmentOperator=="+=") {
+          this->setVariableValue(variableName, variableValue+changeValue);
+        } else if(assignmentOperator=="-=") {
+          this->setVariableValue(variableName, variableValue-changeValue);
+        } else if(assignmentOperator=="*=") {
+          this->setVariableValue(variableName, variableValue*changeValue);
+        } else if(assignmentOperator=="=") {
+          this->setVariableValue(variableName, changeValue);
+        }
+      }
+    }
+    // Apply enter changes
+    if(this->enterStateValues.count(this->currentState)!=0) {
+      for(
+       std::size_t j=0;
+       j<this->enterStateValues.at(this->currentState).size();
+       j++
+      ) {
+        std::tuple<std::string,std::string,double> enterChange =
+         this->enterStateValues.at(this->currentState).at(j);
+        std::string variableName = std::get<0>(enterChange);
+        std::string assignmentOperator = std::get<1>(enterChange);
+        double changeValue = std::get<2>(enterChange);
+        double variableValue = this->getVariableValue(variableName);
+        if(assignmentOperator=="+=") {
+          this->setVariableValue(variableName, variableValue+changeValue);
+        } else if(assignmentOperator=="-=") {
+          this->setVariableValue(variableName, variableValue-changeValue);
+        } else if(assignmentOperator=="*=") {
+          this->setVariableValue(variableName, variableValue*changeValue);
+        } else if(assignmentOperator=="=") {
+          this->setVariableValue(variableName, changeValue);
         }
       }
     }
