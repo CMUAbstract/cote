@@ -18,6 +18,7 @@ test_log
 test_receiver
 test_satellite
 test_sensor
+test_solar_array
 test_state_machine
 test_state_transition
 test_transmitter
