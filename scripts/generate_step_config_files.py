@@ -100,11 +100,11 @@ while revs < n:
     revs += 1
 
 # Write out configuration files
-with open(dst+'num-steps.dat',mode='w',newline='') as csvfile:
+with open(dst+'num-steps.dat',mode='wb') as csvfile:
   csvwriter = csv.writer(csvfile)
   csvwriter.writerow(['steps'])
   csvwriter.writerow(['{:019d}'.format(step)])
-with open(dst+'time-step.dat',mode='w',newline='') as csvfile:
+with open(dst+'time-step.dat',mode='wb') as csvfile:
   csvwriter = csv.writer(csvfile)
   csvwriter.writerow(['hour','minute','second','nanosecond'])
   csvwriter.writerow(['{:02d}'.format(h),'{:02d}'.format(m),'{:02d}'.format(s),'{:09}'.format(ns)])
