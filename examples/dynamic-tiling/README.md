@@ -1,7 +1,7 @@
 # Dynamic Tiling
 
-This example program accepts configuration files as input and outputs
-logs after modeling satellite orbits.
+This example program accepts configuration files as input and outputs logs after
+modeling satellite orbits.
 
 ## Directory Contents
 
@@ -17,9 +17,4 @@ logs after modeling satellite orbits.
 Written by Bradley Denby  
 Other contributors: None
 
-To the extent possible under law, the author(s) have dedicated all copyright and
-related and neighboring rights to this work to the public domain worldwide. This
-work is distributed without any warranty.
-
-You should have received a copy of the CC0 Public Domain Dedication with this
-work. If not, see <https://creativecommons.org/publicdomain/zero/1.0/>.
+See the top-level LICENSE file for the license.
