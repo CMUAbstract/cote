@@ -5,7 +5,6 @@
 #  /path/to/dst/: directory to write .sat files with local date/time prepended
 # Output:
 #  .sat files with local date/time prepended to the three-line TLE
-#  date-time.dat file set to the seed TLE epoch
 
 # import Python modules
 import csv  # writing out configuration files
@@ -101,18 +100,6 @@ sat_second = math.floor(tle_ss*float(SEC_PER_MIN ))
 tle_ns = tle_ss*float(SEC_PER_MIN) -float(sat_second)
 sat_nanosecond = round(tle_ns*float(NS_PER_SEC))
 
-# write out date-time.dat set to the seed TLE epoch
-with open(dst+'date-time.dat',mode='w',newline='') as outfile:
-  csvwriter = csv.writer(outfile)
-  csvwriter.writerow(\
-   ['year','month','day','hour','minute','second','nanosecond']\
-  )
-  csvwriter.writerow([\
-   str(sat_year).zfill(4),str(sat_month).zfill(2),str(sat_day).zfill(2),\
-   str(sat_hour).zfill(2),str(sat_minute).zfill(2),str(sat_second).zfill(2),\
-   str(sat_nanosecond).zfill(9)\
-  ])
-
 # parse TLE revolutions per day
 rev_per_day = float(tle_line_2[52:63])
 
@@ -141,8 +128,8 @@ while i>0:
   sat_id = norad_id*10000+(i-1)
   # generate file name
   filename =\
-   re.sub('[^0-9a-z]+', '-', tle_header.strip().lower()).strip('-')+\
-   '-'+str(sat_id).zfill(10)+'.sat'
+   'sat-'+str(sat_id).zfill(10)+'-'+\
+   re.sub('[^0-9a-z]+', '-', tle_header.strip().lower()).strip('-')+'.sat'
   # write satellite local date, time, and ID
   with open(dst+filename,mode='w',newline='') as outfile:
     csvwriter = csv.writer(outfile)

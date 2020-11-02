@@ -1,4 +1,4 @@
-# Usage: python3 generate_solar_array_files.py count /path/to/seed.tle /path/to/seed.dat /path/to/dst/
+# Usage: python3 generate_solar_array_sat_files.py count /path/to/seed.tle /path/to/seed.dat /path/to/dst/
 # Parameters:
 #  count: number of satellites in the constellation
 #  /path/to/seed.tle: 3-line TLE (header, line one, line two) with seed NORAD ID
@@ -27,7 +27,7 @@ if len(sys.argv)==5:
 else:
   print(\
    'Usage: '\
-   'python3 generate_solar_array_files.py '\
+   'python3 generate_solar_array_sat_files.py '\
    'count /path/to/seed.tle /path/to/seed.dat /path/to/dst/'\
   )
   exit()

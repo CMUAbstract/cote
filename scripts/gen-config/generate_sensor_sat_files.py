@@ -1,8 +1,8 @@
-# Usage: python3 generate_capacitor_files.py count /path/to/seed.tle /path/to/seed.dat /path/to/dst/
+# Usage: python3 generate_sensor_sat_files.py count /path/to/seed.tle /path/to/seed.dat /path/to/dst/
 # Parameters:
 #  count: number of satellites in the constellation
 #  /path/to/seed.tle: 3-line TLE (header, line one, line two) with seed NORAD ID
-#  /path/to/seed.dat: capacitor.dat seed file without ID field
+#  /path/to/seed.dat: sensor.dat seed file without ID field
 #  /path/to/dst/: directory to write .dat files with satellite IDs added
 # Output:
 #  .dat files with satellite IDs added
@@ -27,7 +27,7 @@ if len(sys.argv)==5:
 else:
   print(\
    'Usage: '\
-   'python3 generate_capacitor_files.py '\
+   'python3 generate_sensor_sat_files.py '\
    'count /path/to/seed.tle /path/to/seed.dat /path/to/dst/'\
   )
   exit()
@@ -55,7 +55,7 @@ for i in range(0,cnt):
   sat_id = norad_id*10000+i
   id_str = str(sat_id).zfill(10)
   # generate file name
-  filename = 'capacitor-sat-'+id_str+'.dat'
+  filename = 'sensor-sat-'+id_str+'.dat'
   # write seed data plus ID
   with open(dst+filename, 'w') as outfile:
     outfile.write(dat_header.rstrip()+',id\n')
