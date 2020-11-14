@@ -114,41 +114,95 @@ int main(int argc, char** argv) {
     std::filesystem::directory_iterator it(configurationDir);
     while(it!=std::filesystem::end(it)) {
       std::string pathStr = it->path().string();
-      if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-13),13)=="date-time.dat") {
+      if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-13),13)==
+       "date-time.dat"
+      ) {
         dateTimeFile = it->path();
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-13),13)=="time-step.dat") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-13),13)==
+       "time-step.dat"
+      ) {
         timeStepFile = it->path();
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-13),13)=="num-steps.dat") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-13),13)==
+       "num-steps.dat"
+      ) {
         numStepsFile = it->path();
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-4),4)==".sat") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-4),4)==
+       ".sat"
+      ) {
         satelliteFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-29),16)=="solar-array-sat-") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-30),16)==
+       "solar-array-sat-"
+      ) {
         solarArrayFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-27),14)=="capacitor-sat-") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-28),14)==
+       "capacitor-sat-"
+      ) {
         capacitorFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-20),7)=="rx-sat-") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-21),7)==
+       "rx-sat-"
+      ) {
         rxSatFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-20),7)=="tx-sat-") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-21),7)==
+       "tx-sat-"
+      ) {
         txSatFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-26),13)=="adacs-sm-sat-") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-27),13)==
+       "adacs-sm-sat-"
+      ) {
         adacsSMFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-27),14)=="camera-sm-sat-") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-28),14)==
+       "camera-sm-sat-"
+      ) {
         cameraSMFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-23),10)=="rx-sm-sat-") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-24),10)==
+       "rx-sm-sat-"
+      ) {
         rxSatSMFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-23),10)=="tx-sm-sat-") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-24),10)==
+       "tx-sm-sat-"
+      ) {
         txSatSMFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-24),11)=="sensor-sat-") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-25),11)==
+       "sensor-sat-"
+      ) {
         sensorSatFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-25),12)=="program-sat-") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-26),12)==
+       "program-sat-"
+      ) {
         programSatFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-20),14)=="constellation-") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-29),14)==
+       "constellation-"
+      ) {
         constellationFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-4),4)==".gnd") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-4),4)==
+       ".gnd"
+      ) {
         groundStationFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-20),7)=="rx-gnd-") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-21),7)==
+       "rx-gnd-"
+      ) {
         rxGndFiles.push_back(it->path());
-      } else if(pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-20),7)=="tx-gnd-") {
+      } else if(
+       pathStr.substr(std::max(0,static_cast<int>(pathStr.size())-21),7)==
+       "tx-gnd-"
+      ) {
         txGndFiles.push_back(it->path());
       }
       it++;
@@ -442,9 +496,9 @@ int main(int argc, char** argv) {
     std::vector<json::Value*> constellSatMembers =
      dynamic_cast<json::Array*>(constellConfigMap["satellite-ids"])->getValue();
     std::vector<uint32_t> constellSatIds;
-    for(std::size_t j=0; i<constellSatMembers.size(); j++) {
+    for(std::size_t j=0; j<constellSatMembers.size(); j++) {
       uint32_t satId = static_cast<uint32_t>(std::stoul(
-       dynamic_cast<json::String*>(constellSatMembers.at(i))->getValue()
+       dynamic_cast<json::String*>(constellSatMembers.at(j))->getValue()
       ));
       constellId2Sats[constellId].push_back(satId2Sat[satId]);
     }
