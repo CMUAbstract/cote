@@ -1,7 +1,13 @@
 variable:power-w:0.0
 variable:node-voltage:0.0
+variable:channel-available:0
 enter-state:OFF:power-w=0.0
-enter-state:RX:power-w=0.1
-transition:OFF->RX:node-voltage>=3.3
-transition:RX->OFF:node-voltage<3.3
+enter-state:IDLE:power-w=0.0
+enter-state:RX:power-w=3.5
+transition:OFF->IDLE:node-voltage>=6.0,channel-available==0
+transition:OFF->RX:node-voltage>=6.75,channel-available!=0
+transition:IDLE->OFF:node-voltage<6.0
+transition:IDLE->RX:node-voltage>=6.75,channel-available!=0
+transition:RX->OFF:node-voltage<6.0
+transition:RX->IDLE:node-voltage>=6.0,channel-available==0
 initial-state:OFF
