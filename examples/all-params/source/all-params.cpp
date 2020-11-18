@@ -390,6 +390,7 @@ int main(int argc, char** argv) {
     satId2TxSm[id] = new cote::StateMachine(txSatSMFileStr,id,&log);
   }
   // Initialize the energy system for each satellite
+  std::map<uint32_t,double> satId2NodeVoltage;
   for(std::size_t i=0; i<satellites.size(); i++) {
     const uint32_t SAT_ID = satellites.at(i).getID();
     double powerW =
@@ -441,6 +442,16 @@ int main(int argc, char** argv) {
     satId2ComputerSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
     satId2RxSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
     satId2TxSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
+    satId2NodeVoltage[SAT_ID] = nodeVoltage;
+    // Update state for each state machine
+    // After calculating the initial values for all state machine variables,
+    // updateState must be called so that they are in the correct state for the
+    // first time step
+    satId2AdacsSm[SAT_ID]->updateState();
+    satId2CameraSm[SAT_ID]->updateState();
+    satId2ComputerSm[SAT_ID]->updateState();
+    satId2RxSm[SAT_ID]->updateState();
+    satId2TxSm[SAT_ID]->updateState();
   }
   // Set up satellite RX
   std::map<uint32_t,cote::Receiver*> satId2Rx;
@@ -497,8 +508,12 @@ int main(int argc, char** argv) {
     satId2TxBandwidthHz.insert(std::make_pair(id,txBandwidthHz));
   }
   // Set up sensors
-  std::map<uint32_t,cote::Sensor*> satId2Sensor;
-  std::map<uint32_t,const double> satId2ThreshCoeff;
+  std::map<uint32_t,cote::Sensor*>  satId2Sensor;
+  std::map<uint32_t,const double>   satId2ThreshCoeff;
+  std::map<uint32_t,const uint32_t> satId2PixelCountW;
+  std::map<uint32_t,const double>   satId2PixelSizeM;
+  std::map<uint32_t,const double>   satId2FocalLengthM;
+  std::map<uint32_t,const uint32_t> satId2PixelCountH;
   for(std::size_t i=0; i<sensorSatFiles.size(); i++) {
     std::ifstream sensorHandle(sensorSatFiles.at(i).string());
     line = "";
@@ -528,6 +543,10 @@ int main(int argc, char** argv) {
      static_cast<double>(std::max(pixelCountW,pixelCountH))*pixelSizeM/
      focalLengthM
     ));
+    satId2PixelCountW.insert(std::make_pair(id,pixelCountW));
+    satId2PixelSizeM.insert(std::make_pair(id,pixelSizeM));
+    satId2FocalLengthM.insert(std::make_pair(id,focalLengthM));
+    satId2PixelCountH.insert(std::make_pair(id,pixelCountH));
     satId2Sensor[id] = new cote::Sensor(posn,&dateTime,id,&log);
     satId2Sensor[id]->setBitsPerSense(bitsPerSense);
   }
@@ -747,6 +766,7 @@ int main(int argc, char** argv) {
           }
         }
       }
+      // This removes a sat/gnd channel once the satellite goes out of view
       if(!currSatInView && gndId2CurrSat[GND_ID]!=nullptr) {
         satId2RxOccupied[gndId2CurrSat[GND_ID]->getID()] = false;
         satId2TxOccupied[gndId2CurrSat[GND_ID]->getID()] = false;
@@ -766,7 +786,6 @@ int main(int argc, char** argv) {
         for(std::size_t j=0; j<gndId2VisSats[GND_ID].size(); j++) {
           cote::Satellite* satj = gndId2VisSats[GND_ID].at(j);
           const uint32_t SAT_ID = satj->getID();
-          const std::array<double,3> satjEciPosn = satj->getECIPosn();
           const uint64_t BUF = satId2Sensor[SAT_ID]->getBitsBuffered();
           // Don't select a satellite that is already transmitting
           if(!satId2TxOccupied[SAT_ID] && BUF>bestSatBuffer) {
@@ -808,6 +827,7 @@ int main(int argc, char** argv) {
       }
     }
     // Sensor data collection logic
+    std::map<uint32_t,double> satId2GSD;
     for(std::size_t i=0; i<satellites.size(); i++) {
       const uint32_t SAT_ID = satellites.at(i).getID();
       const std::array<double,3> prevSensePosn =
@@ -837,7 +857,7 @@ int main(int argc, char** argv) {
       )*cote::cnst::WGS_84_A; // Earth "radius" in km
       if(distanceKm>=satId2ThresholdKm[SAT_ID]) {
         // Increment the camera state machine imaging task count
-        std::size_t imagingTaskCount = std::round(
+        std::size_t imagingTaskCount = std::round( // hack double to size_t
          satId2CameraSm[SAT_ID]->getVariableValue("imaging-task-count")
         );
         satId2CameraSm[SAT_ID]->setVariableValue(
@@ -846,10 +866,16 @@ int main(int argc, char** argv) {
         // Update the threshold value for next GTFR sense event
         const double satAltKm = cote::util::calcAltitudeKm(currPosn);
         satId2ThresholdKm[SAT_ID] = satId2ThreshCoeff[SAT_ID]*satAltKm;
-        //satId2Sensor[SAT_ID]->triggerSense(); // move this elsewhere
+        // Trigger a sense event now to update prevSense values
+        satId2Sensor[SAT_ID]->triggerSense();
+        // Calculate GSD for use in tiling calculation
+        satId2GSD[SAT_ID] =
+         satId2PixelSizeM[SAT_ID]*satAltKm*cote::cnst::M_PER_KM/
+         satId2FocalLengthM[SAT_ID];
       }
     }
-    // Execute state machine logic for each satellite
+    // Execute custom state machine logic for each satellite
+    // (separate from state transitions)
     for(std::size_t i=0; i<satellites.size(); i++) {
       const uint32_t SAT_ID = satellites.at(i).getID();
       // ADACS state machine logic
@@ -858,12 +884,12 @@ int main(int argc, char** argv) {
       if(satId2CameraSm[SAT_ID]->getCurrentState()=="IMAGING") {
         const double imagingDurationS =
          satId2CameraSm[SAT_ID]->getConstantValue("imaging-duration-s");
-        double imagingTimeS =
+        double imagingTimeS = // this value is set in the sim update section
          satId2CameraSm[SAT_ID]->getVariableValue("imaging-time-s");
-        std::size_t imagingTaskCount = std::round(
+        std::size_t imagingTaskCount = std::round( // hack double to size_t
          satId2CameraSm[SAT_ID]->getVariableValue("imaging-task-count")
         );
-        std::size_t readoutTaskCount = std::round(
+        std::size_t readoutTaskCount = std::round( // hack double to size_t
          satId2CameraSm[SAT_ID]->getVariableValue("readout-task-count")
         );
         while(imagingTimeS>=imagingDurationS && imagingTaskCount>0) {
@@ -881,18 +907,36 @@ int main(int argc, char** argv) {
       } else if(satId2CameraSm[SAT_ID]->getCurrentState()=="READOUT") {
         const double readoutDurationS =
          satId2CameraSm[SAT_ID]->getConstantValue("readout-duration-s");
-        double readoutTimeS =
+        double readoutTimeS = // this value is set in the sim update section
          satId2CameraSm[SAT_ID]->getVariableValue("readout-time-s");
-        std::size_t readoutTaskCount = std::round(
+        std::size_t readoutTaskCount = std::round( // hack double to size_t
          satId2CameraSm[SAT_ID]->getVariableValue("readout-task-count")
         );
-        std::size_t claimedTaskCount = std::round(
+        std::size_t claimedTaskCount = std::round( // hack double to size_t
          satId2ComputerSm[SAT_ID]->getVariableValue("claimed-task-count")
         );
+        // Calculate tile count per image
+        const std::size_t tileColCount = std::round(
+         (static_cast<double>(satId2PixelCountW[SAT_ID])*
+          static_cast<double>(satId2Program[SAT_ID].idealFeatureWidthPx)/
+          (satId2Program[SAT_ID].actualFeatureWidthM/satId2GSD[SAT_ID])
+         )/static_cast<double>(satId2Program[SAT_ID].inputWidthPx)
+        );
+        const std::size_t tileRowCount = std::round(
+         (static_cast<double>(satId2PixelCountH[SAT_ID])*
+          static_cast<double>(satId2Program[SAT_ID].idealFeatureHeightPx)/
+          (satId2Program[SAT_ID].actualFeatureHeightM/satId2GSD[SAT_ID])
+         )/static_cast<double>(satId2Program[SAT_ID].inputHeightPx)
+        );
+        const std::size_t tilesPerImage = tileColCount*tileRowCount;
         while(readoutTimeS>=readoutDurationS && readoutTaskCount>0) {
-          claimedTaskCount += 32; // 32 computer tasks per 1 image readout
+          claimedTaskCount += tilesPerImage; // computer tasks per image readout
           readoutTaskCount -= 1;
           readoutTimeS -= readoutDurationS;
+          // triggerSense() has already been called; at this point, the data has
+          // been read out so the satellite TX radio has data available (true)
+          // for transmission to ground
+          satId2TxSm[SAT_ID]->setVariableValue("data-available",1.0);
         }
         satId2CameraSm[SAT_ID]->setVariableValue("readout-time-s",readoutTimeS);
         satId2CameraSm[SAT_ID]->setVariableValue(
@@ -902,29 +946,92 @@ int main(int argc, char** argv) {
          "claimed-task-count",static_cast<double>(claimedTaskCount)
         );
       }
+      // Computer state machine logic
+      if(satId2ComputerSm[SAT_ID]->getCurrentState()=="WORK") {
+        const double taskDurationS =
+         satId2ComputerSm[SAT_ID]->getConstantValue("task-duration-s");
+        double workTimeS = // this value is set in the sim update section
+         satId2ComputerSm[SAT_ID]->getVariableValue("work-time-s");
+        std::size_t claimedTaskCount = std::round( // hack double to size_t
+         satId2ComputerSm[SAT_ID]->getVariableValue("claimed-task-count")
+        );
+        while(workTimeS>=taskDurationS && claimedTaskCount>0) {
+          claimedTaskCount -= 1;
+          workTimeS -= taskDurationS;
+        }
+        satId2ComputerSm[SAT_ID]->setVariableValue("work-time-s",workTimeS);
+        satId2ComputerSm[SAT_ID]->setVariableValue(
+         "claimed-task-count",static_cast<double>(claimedTaskCount)
+        );
+      }
+      // Satellite RX state machine logic
+      //// None
+      // Satellite TX state machine logic
+      //// None
     }
-
     // Update simulation to the next time step
     dateTime.update(hourStep,minuteStep,secondStep,nsStep);
     for(std::size_t i=0; i<satellites.size(); i++) {
       const uint32_t SAT_ID = satellites.at(i).getID();
       satellites.at(i).update(hourStep,minuteStep,secondStep,nsStep);
-      //std::array<double,3> posn = satellites.at(i).getECIPosn();
-      //satId2Tx[SAT_ID]->setPosn(posn);
-      //satId2Tx[SAT_ID]->update(hourStep,minuteStep,secondStep,nsStep);
-      //satId2Sensor[SAT_ID]->setECIPosn(posn);
-      //satId2Sensor[SAT_ID]->update(
-      // hourStep,minuteStep,secondStep,nsStep
-      //);
+      const std::array<double,3> posn = satellites.at(i).getECIPosn();
+      satId2Sensor[SAT_ID]->setECIPosn(posn);
+      satId2Sensor[SAT_ID]->update(
+       hourStep,minuteStep,secondStep,nsStep
+      );
+      satId2Rx[SAT_ID]->setPosn(posn);
+      satId2Rx[SAT_ID]->update(hourStep,minuteStep,secondStep,nsStep);
+      satId2Tx[SAT_ID]->setPosn(posn);
+      satId2Tx[SAT_ID]->update(hourStep,minuteStep,secondStep,nsStep);
+      double capacitorChargeCoulomb =
+       satId2Capacitor[SAT_ID]->getChargeCoulomb();
+      const double totalLoadCurrentAmpere = (
+       satId2AdacsSm[SAT_ID]->getVariableValue("power-w")+
+       satId2CameraSm[SAT_ID]->getVariableValue("power-w")+
+       satId2ComputerSm[SAT_ID]->getVariableValue("power-w")+
+       satId2RxSm[SAT_ID]->getVariableValue("power-w")+
+       satId2TxSm[SAT_ID]->getVariableValue("power-w")
+      )/satId2NodeVoltage[SAT_ID];
+      capacitorChargeCoulomb += (
+       satId2SolarArray[SAT_ID]->getCurrentAmpere()-totalLoadCurrentAmpere
+      )*totalStepInSec;
+      if(capacitorChargeCoulomb<0.0) {
+        capacitorChargeCoulomb = 0.0;
+      }
+      satId2Capacitor[SAT_ID]->setChargeCoulomb(capacitorChargeCoulomb);
+      if(satId2ComputerSm[SAT_ID]->getCurrentState()=="WORK") {
+        double workTimeS =
+         satId2ComputerSm[SAT_ID]->getVariableValue("work-time-s");
+        satId2ComputerSm[SAT_ID]->setVariableValue(
+         "work-time-s",workTimeS+totalStepInSec
+        );
+      }
+      if(satId2CameraSm[SAT_ID]->getCurrentState()=="IMAGING") {
+        double imagingTimeS =
+         satId2CameraSm[SAT_ID]->getVariableValue("imaging-time-s");
+        satId2CameraSm[SAT_ID]->setVariableValue(
+         "imaging-time-s",imagingTimeS+totalStepInSec
+        );
+      } else if(satId2CameraSm[SAT_ID]->getCurrentState()=="READOUT") {
+        double readoutTimeS =
+         satId2CameraSm[SAT_ID]->getVariableValue("readout-time-s");
+        satId2CameraSm[SAT_ID]->setVariableValue(
+         "readout-time-s",readoutTimeS+totalStepInSec
+        );
+      }
+      // Energy system update
+
     }
     for(std::size_t i=0; i<groundStations.size(); i++) {
       const uint32_t GND_ID = groundStations.at(i).getID();
-      groundStations.at(i).update(
-       hourStep,minuteStep,secondStep,nsStep
-      );
-      //gndId2Rx[GND_ID]->setPosn(groundStations.at(i).getECIPosn());
-      //gndId2Rx[GND_ID]->update(hourStep,minuteStep,secondStep,nsStep);
+      groundStations.at(i).update(hourStep,minuteStep,secondStep,nsStep);
+      const std::array<double,3> posn = groundStations.at(i).getECIPosn();
+      gndId2Rx[GND_ID]->setPosn(posn);
+      gndId2Rx[GND_ID]->update(hourStep,minuteStep,secondStep,nsStep);
+      gndId2Tx[GND_ID]->setPosn(posn);
+      gndId2Tx[GND_ID]->update(hourStep,minuteStep,secondStep,nsStep);
     }
+    // Increment step count
     stepCount+=1;
   }
   // Write out any remaining logs
