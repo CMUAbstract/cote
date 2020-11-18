@@ -1,0 +1,10 @@
+{
+  "id" : "0000000001",
+  "data-collection" : "frame-spaced",
+  "data-processing" : "frame-parallel",
+  "satellite-ids" : [
+    "0449380000",
+    "0449380001",
+    "0449380002"
+  ]
+}
