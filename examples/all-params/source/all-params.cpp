@@ -20,6 +20,7 @@
 #include <iostream>          // cout
 #include <map>               // map
 #include <ostream>           // endl
+#include <queue>             // queue
 #include <string>            // string
 #include <sstream>           // ostringstream
 #include <utility>           // make_pair
@@ -464,13 +465,7 @@ int main(int argc, char** argv) {
     std::getline(rxSatHandle,line); // Read values
     rxSatHandle.close();
     const uint32_t id = static_cast<uint32_t>(std::stoul(line.substr(0,10)));
-    std::array<double,3> posn = {0.0,0.0,0.0};
-    for(std::size_t j=0; j<satellites.size(); j++) {
-      if(satellites.at(j).getID()==id) {
-        posn = satellites.at(j).getECIPosn();
-        j = satellites.size();
-      }
-    }
+    const std::array<double,3> posn = satId2Sat[id]->getECIPosn();
     const double gainDB = std::stod(line.substr(11,13));
     const double rxCenterFrequencyHz = std::stod(line.substr(25,22));
     const double rxBandwidthHz = std::stod(line.substr(48,23));
@@ -489,13 +484,7 @@ int main(int argc, char** argv) {
     std::getline(txSatHandle,line); // Read values
     txSatHandle.close();
     const uint32_t id = static_cast<uint32_t>(std::stoul(line.substr(0,10)));
-    std::array<double,3> posn = {0.0,0.0,0.0};
-    for(std::size_t j=0; j<satellites.size(); j++) {
-      if(satellites.at(j).getID()==id) {
-        posn = satellites.at(j).getECIPosn();
-        j = satellites.size();
-      }
-    }
+    const std::array<double,3> posn = satId2Sat[id]->getECIPosn();
     const double powerW = std::stod(line.substr(11,16));
     const double lineLossDB = std::stod(line.substr(28,13));
     const double gainDB = std::stod(line.substr(42,13));
@@ -531,13 +520,7 @@ int main(int argc, char** argv) {
     const uint32_t pixelCountH =
      static_cast<uint32_t>(std::stoul(line.substr(40,5)));
     const uint32_t id = static_cast<uint32_t>(std::stoul(line.substr(46,10)));
-    std::array<double,3> posn = {0.0,0.0,0.0};
-    for(std::size_t j=0; j<satellites.size(); j++) {
-      if(satellites.at(j).getID()==id) {
-        posn = satellites.at(j).getECIPosn();
-        j = satellites.size();
-      }
-    }
+    const std::array<double,3> posn = satId2Sat[id]->getECIPosn();
     satId2ThreshCoeff.insert(std::make_pair(
      id, // geographic frame width (km) = threshCoeff*altitude(km)
      static_cast<double>(std::max(pixelCountW,pixelCountH))*pixelSizeM/
@@ -648,6 +631,10 @@ int main(int argc, char** argv) {
     return g1.getID() < g2.getID();
    }
   );
+  std::map<uint32_t,cote::GroundStation*> gndId2Gnd;
+  for(std::size_t i=0; i<groundStations.size(); i++) {
+    gndId2Gnd[groundStations.at(i).getID()] = &(groundStations.at(i));
+  }
   // Set up ground station RX
   std::map<uint32_t,cote::Receiver*> gndId2Rx;
   std::map<uint32_t,const double> gndId2RxCenterFrequencyHz;
@@ -659,13 +646,7 @@ int main(int argc, char** argv) {
     std::getline(rxGndHandle,line); // Read values
     rxGndHandle.close();
     const uint32_t id = static_cast<uint32_t>(std::stoul(line.substr(0,10)));
-    std::array<double,3> posn = {0.0,0.0,0.0};
-    for(std::size_t j=0; j<groundStations.size(); j++) {
-      if(groundStations.at(j).getID()==id) {
-        posn = groundStations.at(j).getECIPosn();
-        j = groundStations.size();
-      }
-    }
+    const std::array<double,3> posn = gndId2Gnd[id]->getECIPosn();
     const double gainDB = std::stod(line.substr(11,13));
     const double rxCenterFrequencyHz = std::stod(line.substr(25,22));
     const double rxBandwidthHz = std::stod(line.substr(48,23));
@@ -684,13 +665,7 @@ int main(int argc, char** argv) {
     std::getline(txGndHandle,line); // Read values
     txGndHandle.close();
     const uint32_t id = static_cast<uint32_t>(std::stoul(line.substr(0,10)));
-    std::array<double,3> posn = {0.0,0.0,0.0};
-    for(std::size_t j=0; j<groundStations.size(); j++) {
-      if(groundStations.at(j).getID()==id) {
-        posn = groundStations.at(j).getECIPosn();
-        j = groundStations.size();
-      }
-    }
+    const std::array<double,3> posn = gndId2Gnd[id]->getECIPosn();
     const double powerW = std::stod(line.substr(11,16));
     const double lineLossDB = std::stod(line.substr(28,13));
     const double gainDB = std::stod(line.substr(42,13));
@@ -703,6 +678,21 @@ int main(int argc, char** argv) {
     gndId2TxBandwidthHz.insert(std::make_pair(id,txBandwidthHz));
   }
   // Simulation data
+  std::map<uint32_t,double> satId2ThresholdKm;
+  std::map<uint32_t,std::queue<double>> satId2GSDs;
+  std::map<uint32_t,bool> satId2RxOccupied;
+  std::map<uint32_t,bool> satId2TxOccupied;
+  std::map<uint32_t,uint64_t> satId2TxBufferBits;
+  for(std::size_t i=0; i<satellites.size(); i++) {
+    const uint32_t SAT_ID = satellites.at(i).getID();
+    satId2ThresholdKm[SAT_ID] =
+     satId2ThreshCoeff[SAT_ID]*
+     cote::util::calcAltitudeKm(satellites.at(i).getECIPosn());
+    satId2GSDs[SAT_ID] = std::queue<double>();
+    satId2RxOccupied[SAT_ID] = false;
+    satId2TxOccupied[SAT_ID] = false;
+    satId2TxBufferBits[SAT_ID] = 0;
+  }
   std::vector<cote::Channel> crosslinks = std::vector<cote::Channel>();
   std::vector<cote::Channel> downlinks  = std::vector<cote::Channel>();
   std::vector<cote::Channel> uplinks    = std::vector<cote::Channel>();
@@ -713,30 +703,10 @@ int main(int argc, char** argv) {
     gndId2VisSats[GND_ID] = std::vector<cote::Satellite*>();
     gndId2CurrSat[GND_ID] = nullptr;
   }
-  std::map<uint32_t,bool> satId2RxOccupied;
-  std::map<uint32_t,bool> satId2TxOccupied;
-  std::map<uint32_t,double> satId2ThresholdKm;
-  for(std::size_t i=0; i<satellites.size(); i++) {
-    const uint32_t SAT_ID = satellites.at(i).getID();
-    satId2RxOccupied[SAT_ID] = false;
-    satId2TxOccupied[SAT_ID] = false;
-    satId2ThresholdKm[SAT_ID] =
-     satId2ThreshCoeff[SAT_ID]*
-     cote::util::calcAltitudeKm(satellites.at(i).getECIPosn());
-  }
   // Simulation loop
   uint64_t stepCount = 0;
   while(stepCount<numSteps) {
-    // Clear communication channels so that they can be re-calculated
-    crosslinks.clear();
-    downlinks.clear();
-    uplinks.clear();
-    for(std::size_t i=0; i<satellites.size(); i++) {
-      const uint32_t SAT_ID = satellites.at(i).getID();
-      satId2TxSm[SAT_ID]->setVariableValue("channel-available",0.0);
-      satId2RxSm[SAT_ID]->setVariableValue("channel-available",0.0);
-    }
-    // Calculate Julian date and time
+    // Date and time
     const double JD = cote::util::calcJulianDayFromYMD(
      dateTime.getYear(),dateTime.getMonth(),dateTime.getDay()
     );
@@ -744,143 +714,43 @@ int main(int argc, char** argv) {
      dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond()
     );
     const uint32_t NS = dateTime.getNanosecond();
-    // Determine visible satellites for each ground station
-    for(std::size_t i=0; i<groundStations.size(); i++) {
-      const double LAT      = groundStations.at(i).getLatitude();
-      const double LON      = groundStations.at(i).getLongitude();
-      const double HAE      = groundStations.at(i).getHAE();
-      const uint32_t GND_ID = groundStations.at(i).getID();
-      gndId2VisSats[GND_ID].clear();
-      bool currSatInView  = false;
-      for(size_t j=0; j<satellites.size(); j++) {
-        const std::array<double,3> satEciPosn = satellites.at(j).getECIPosn();
-        if(
-         cote::util::calcElevationDeg(JD,SEC,NS,LAT,LON,HAE,satEciPosn)>=10.0
-        ) {
-          gndId2VisSats[GND_ID].push_back(&(satellites.at(j)));
-          if(
-           gndId2CurrSat[GND_ID]!=nullptr &&
-           gndId2CurrSat[GND_ID]==gndId2VisSats[GND_ID].back() // same pointer
-          ) {
-            currSatInView = true;
-          }
-        }
-      }
-      // This removes a sat/gnd channel once the satellite goes out of view
-      if(!currSatInView && gndId2CurrSat[GND_ID]!=nullptr) {
-        satId2RxOccupied[gndId2CurrSat[GND_ID]->getID()] = false;
-        satId2TxOccupied[gndId2CurrSat[GND_ID]->getID()] = false;
-        gndId2CurrSat[GND_ID] = nullptr;
-      }
-    }
-    // Construct available downlink and uplink lists
-    for(std::size_t i=0; i<groundStations.size(); i++) {
-      const uint32_t GND_ID = groundStations.at(i).getID();
-      // If no current link, choose a visible satellite
-      // Best satellite policy:
-      //   - visible (i.e. in gndId2VisSats)
-      //   - has the most amount of data to downlink
-      if(gndId2CurrSat[GND_ID]==nullptr) {
-        cote::Satellite* bestSat = nullptr;
-        uint64_t bestSatBuffer = 0;
-        for(std::size_t j=0; j<gndId2VisSats[GND_ID].size(); j++) {
-          cote::Satellite* satj = gndId2VisSats[GND_ID].at(j);
-          const uint32_t SAT_ID = satj->getID();
-          const uint64_t BUF = satId2Sensor[SAT_ID]->getBitsBuffered();
-          // Don't select a satellite that is already transmitting
-          if(!satId2TxOccupied[SAT_ID] && BUF>bestSatBuffer) {
-            bestSat = satj;
-            bestSatBuffer = BUF;
-          }
-          satj = nullptr;
-        }
-        if(bestSat!=nullptr) {
-          satId2RxOccupied[bestSat->getID()] = true;
-          satId2TxOccupied[bestSat->getID()] = true;
-          gndId2CurrSat[GND_ID] = bestSat;
-        }
-        bestSat = nullptr;
-      }
-      // Construct downlink and uplink if available
-      if(gndId2CurrSat[GND_ID]!=nullptr) {
-        const uint32_t SAT_ID = gndId2CurrSat[GND_ID]->getID();
-        // Construct downlink
-        downlinks.push_back(
-         cote::Channel(
-          satId2Tx[SAT_ID],gndId2Rx[GND_ID],
-          satId2TxCenterFrequencyHz[SAT_ID],satId2TxBandwidthHz[SAT_ID],
-          &dateTime,&log
-         )
-        );
-        // Satellite TX state machine logic
-        satId2TxSm[SAT_ID]->setVariableValue("channel-available",1.0);
-        // Construct uplink
-        uplinks.push_back(
-         cote::Channel(
-          gndId2Tx[GND_ID],satId2Rx[SAT_ID],
-          gndId2TxCenterFrequencyHz[GND_ID],gndId2TxBandwidthHz[GND_ID],
-          &dateTime,&log
-         )
-        );
-        // Satellite RX state machine logic
-        satId2RxSm[SAT_ID]->setVariableValue("channel-available",1.0);
-      }
-    }
-    // Sensor data collection logic
-    std::map<uint32_t,double> satId2GSD;
+    const std::array<double,3> SUN_ECI_POSN_KM =
+     cote::util::calcSunEciPosnKm(JD,SEC,NS);
+    // Simulate satellites
     for(std::size_t i=0; i<satellites.size(); i++) {
       const uint32_t SAT_ID = satellites.at(i).getID();
-      const std::array<double,3> prevSensePosn =
-       satId2Sensor[SAT_ID]->getPrevSensePosn();
-      const cote::DateTime prevSenseDateTime =
-       satId2Sensor[SAT_ID]->getPrevSenseDateTime();
-      const double PREV_JD = cote::util::calcJulianDayFromYMD(
-       prevSenseDateTime.getYear(), prevSenseDateTime.getMonth(),
-       prevSenseDateTime.getDay()
-      );
-      const uint32_t PREV_SEC = cote::util::calcSecSinceMidnight(
-       prevSenseDateTime.getHour(), prevSenseDateTime.getMinute(),
-       prevSenseDateTime.getSecond()
-      );
-      const uint32_t PREV_NS = prevSenseDateTime.getNanosecond();
-      const double PREV_LAT = cote::util::calcSubpointLatitude(prevSensePosn);
-      const double PREV_LON = cote::util::calcSubpointLongitude(
-       PREV_JD, PREV_SEC, PREV_NS, prevSensePosn
-      );
-      const std::array<double,3> currPosn = satId2Sensor[SAT_ID]->getECIPosn();
-      const double CURR_LAT = cote::util::calcSubpointLatitude(currPosn);
-      const double CURR_LON = cote::util::calcSubpointLongitude(
-       JD, SEC, NS, currPosn
-      );
-      const double distanceKm = cote::util::calcGreatCircleArc(
-       CURR_LON, CURR_LAT, PREV_LON, PREV_LAT
-      )*cote::cnst::WGS_84_A; // Earth "radius" in km
-      if(distanceKm>=satId2ThresholdKm[SAT_ID]) {
-        // Increment the camera state machine imaging task count
-        std::size_t imagingTaskCount = std::round( // hack double to size_t
-         satId2CameraSm[SAT_ID]->getVariableValue("imaging-task-count")
-        );
-        satId2CameraSm[SAT_ID]->setVariableValue(
-         "imaging-task-count",static_cast<double>(imagingTaskCount+1)
-        );
-        // Update the threshold value for next GTFR sense event
-        const double satAltKm = cote::util::calcAltitudeKm(currPosn);
-        satId2ThresholdKm[SAT_ID] = satId2ThreshCoeff[SAT_ID]*satAltKm;
-        // Trigger a sense event now to update prevSense values
-        satId2Sensor[SAT_ID]->triggerSense();
-        // Calculate GSD for use in tiling calculation
-        satId2GSD[SAT_ID] =
-         satId2PixelSizeM[SAT_ID]*satAltKm*cote::cnst::M_PER_KM/
-         satId2FocalLengthM[SAT_ID];
+      const std::array<double,3> SAT_ECI_POSN_KM =
+       satId2Sat[SAT_ID]->getECIPosn();
+      // Simulate solar array current
+      const double sunOcclusionFactor =
+       cote::util::calcSunOcclusionFactor(SAT_ECI_POSN_KM,SUN_ECI_POSN_KM);
+      //// When sunOcclusionFactor is 0.0, irradiance is SOLAR_CONSTANT
+      //// When sunOcclusionFactor is 1.0, irradiance is 1% of SOLAR_CONSTANT
+      //// -1352.44 is the slope needed to achieve the above effect
+      const double irradianceWPerM2 =
+       -1352.44*sunOcclusionFactor+cote::cnst::SOLAR_CONSTANT;
+      //// setIrradianceWpM2 calculates and sets the appropriate output current
+      satId2SolarArray[SAT_ID]->setIrradianceWpM2(irradianceWPerM2);
+      // Simulate capacitor charge
+      double capacitorChargeCoulomb =
+       satId2Capacitor[SAT_ID]->getChargeCoulomb();
+      const double totalLoadCurrentAmpere = (
+       satId2AdacsSm[SAT_ID]->getVariableValue("power-w")+
+       satId2CameraSm[SAT_ID]->getVariableValue("power-w")+
+       satId2ComputerSm[SAT_ID]->getVariableValue("power-w")+
+       satId2RxSm[SAT_ID]->getVariableValue("power-w")+
+       satId2TxSm[SAT_ID]->getVariableValue("power-w")
+      )/satId2NodeVoltage[SAT_ID];
+      capacitorChargeCoulomb += (
+       satId2SolarArray[SAT_ID]->getCurrentAmpere()-totalLoadCurrentAmpere
+      )*totalStepInSec;
+      if(capacitorChargeCoulomb<0.0) {
+        capacitorChargeCoulomb = 0.0;
       }
-    }
-    // Execute custom state machine logic for each satellite
-    // (separate from state transitions)
-    for(std::size_t i=0; i<satellites.size(); i++) {
-      const uint32_t SAT_ID = satellites.at(i).getID();
-      // ADACS state machine logic
-      //// None
-      // Camera state machine logic
+      satId2Capacitor[SAT_ID]->setChargeCoulomb(capacitorChargeCoulomb);
+      // Simulate ADACS state machine
+      //// Nothing to be done
+      // Simulate camera state machine
       if(satId2CameraSm[SAT_ID]->getCurrentState()=="IMAGING") {
         const double imagingDurationS =
          satId2CameraSm[SAT_ID]->getConstantValue("imaging-duration-s");
@@ -915,28 +785,32 @@ int main(int argc, char** argv) {
         std::size_t claimedTaskCount = std::round( // hack double to size_t
          satId2ComputerSm[SAT_ID]->getVariableValue("claimed-task-count")
         );
-        // Calculate tile count per image
-        const std::size_t tileColCount = std::round(
-         (static_cast<double>(satId2PixelCountW[SAT_ID])*
-          static_cast<double>(satId2Program[SAT_ID].idealFeatureWidthPx)/
-          (satId2Program[SAT_ID].actualFeatureWidthM/satId2GSD[SAT_ID])
-         )/static_cast<double>(satId2Program[SAT_ID].inputWidthPx)
-        );
-        const std::size_t tileRowCount = std::round(
-         (static_cast<double>(satId2PixelCountH[SAT_ID])*
-          static_cast<double>(satId2Program[SAT_ID].idealFeatureHeightPx)/
-          (satId2Program[SAT_ID].actualFeatureHeightM/satId2GSD[SAT_ID])
-         )/static_cast<double>(satId2Program[SAT_ID].inputHeightPx)
-        );
-        const std::size_t tilesPerImage = tileColCount*tileRowCount;
         while(readoutTimeS>=readoutDurationS && readoutTaskCount>0) {
+          // Calculate tile count per image
+          const double GSD = satId2GSDs[SAT_ID].front();
+          satId2GSDs[SAT_ID].pop();
+          const std::size_t tileColCount = std::round(
+           (static_cast<double>(satId2PixelCountW[SAT_ID])*
+            static_cast<double>(satId2Program[SAT_ID].idealFeatureWidthPx)/
+            (satId2Program[SAT_ID].actualFeatureWidthM/GSD)
+           )/static_cast<double>(satId2Program[SAT_ID].inputWidthPx)
+          );
+          const std::size_t tileRowCount = std::round(
+           (static_cast<double>(satId2PixelCountH[SAT_ID])*
+            static_cast<double>(satId2Program[SAT_ID].idealFeatureHeightPx)/
+            (satId2Program[SAT_ID].actualFeatureHeightM/GSD)
+           )/static_cast<double>(satId2Program[SAT_ID].inputHeightPx)
+          );
+          const std::size_t tilesPerImage = tileColCount*tileRowCount;
+          // State machine logic
           claimedTaskCount += tilesPerImage; // computer tasks per image readout
           readoutTaskCount -= 1;
           readoutTimeS -= readoutDurationS;
-          // triggerSense() has already been called; at this point, the data has
+          // triggerSense() will already have been called; now, the data has
           // been read out so the satellite TX radio has data available (true)
           // for transmission to ground
           satId2TxSm[SAT_ID]->setVariableValue("data-available",1.0);
+          satId2TxBufferBits[SAT_ID] += satId2Sensor[SAT_ID]->getBitsPerSense();
         }
         satId2CameraSm[SAT_ID]->setVariableValue("readout-time-s",readoutTimeS);
         satId2CameraSm[SAT_ID]->setVariableValue(
@@ -946,7 +820,7 @@ int main(int argc, char** argv) {
          "claimed-task-count",static_cast<double>(claimedTaskCount)
         );
       }
-      // Computer state machine logic
+      // Simulate computer state machine
       if(satId2ComputerSm[SAT_ID]->getCurrentState()=="WORK") {
         const double taskDurationS =
          satId2ComputerSm[SAT_ID]->getConstantValue("task-duration-s");
@@ -964,48 +838,173 @@ int main(int argc, char** argv) {
          "claimed-task-count",static_cast<double>(claimedTaskCount)
         );
       }
-      // Satellite RX state machine logic
-      //// None
-      // Satellite TX state machine logic
-      //// None
+      // Simulate satellite RX state machine
+      //// Nothing to be done
+      // Simulate satellite TX state machine
+      //// Nothing to be done
+      // Simulate satellite RX
+      //// Nothing to be done
+      // Simulate satellite TX
+      //// Nothing to be done
+      // Simulate satellite sensor (data collection)
+      const std::array<double,3> PREV_SENSE_POSN =
+       satId2Sensor[SAT_ID]->getPrevSensePosn();
+      const cote::DateTime PREV_SENSE_DATE_TIME =
+       satId2Sensor[SAT_ID]->getPrevSenseDateTime();
+      const double PREV_SENSE_JD = cote::util::calcJulianDayFromYMD(
+       PREV_SENSE_DATE_TIME.getYear(), PREV_SENSE_DATE_TIME.getMonth(),
+       PREV_SENSE_DATE_TIME.getDay()
+      );
+      const uint32_t PREV_SENSE_SEC = cote::util::calcSecSinceMidnight(
+       PREV_SENSE_DATE_TIME.getHour(), PREV_SENSE_DATE_TIME.getMinute(),
+       PREV_SENSE_DATE_TIME.getSecond()
+      );
+      const uint32_t PREV_SENSE_NS = PREV_SENSE_DATE_TIME.getNanosecond();
+      const double PREV_SENSE_LAT =
+       cote::util::calcSubpointLatitude(PREV_SENSE_POSN);
+      const double PREV_SENSE_LON = cote::util::calcSubpointLongitude(
+       PREV_SENSE_JD, PREV_SENSE_SEC, PREV_SENSE_NS, PREV_SENSE_POSN
+      );
+      const double SAT_LAT =
+       cote::util::calcSubpointLatitude(SAT_ECI_POSN_KM);
+      const double SAT_LON = cote::util::calcSubpointLongitude(
+       JD, SEC, NS, SAT_ECI_POSN_KM
+      );
+      const double DIST_KM = cote::util::calcGreatCircleArc(
+       SAT_LON, SAT_LAT, PREV_SENSE_LON, PREV_SENSE_LAT
+      )*cote::cnst::WGS_84_A; // Earth "radius" in km
+      if(DIST_KM>=satId2ThresholdKm[SAT_ID]) {
+        // Increment the camera state machine imaging task count
+        std::size_t imagingTaskCount = std::round( // hack double to size_t
+         satId2CameraSm[SAT_ID]->getVariableValue("imaging-task-count")
+        );
+        satId2CameraSm[SAT_ID]->setVariableValue(
+         "imaging-task-count",static_cast<double>(imagingTaskCount+1)
+        );
+        // Update the threshold value for next GTFR sense event
+        const double SAT_ALT_KM = cote::util::calcAltitudeKm(SAT_ECI_POSN_KM);
+        satId2ThresholdKm[SAT_ID] = satId2ThreshCoeff[SAT_ID]*SAT_ALT_KM;
+        // Trigger a sense event now to update prevSense values
+        satId2Sensor[SAT_ID]->triggerSense();
+        // Calculate GSD for use in tiling calculation
+        satId2GSDs[SAT_ID].push(
+         satId2PixelSizeM[SAT_ID]*SAT_ALT_KM*cote::cnst::M_PER_KM/
+         satId2FocalLengthM[SAT_ID]
+        );
+      }
+      // Simulate satellite program
+      //// Nothing to be done
+      // Simulate satellite communication channels
+    }
+    // Clear communication channels so that they can be re-calculated
+    crosslinks.clear();
+    downlinks.clear();
+    uplinks.clear();
+    // Determine visible satellites for each ground station
+    for(std::size_t i=0; i<groundStations.size(); i++) {
+      const double GND_LAT  = groundStations.at(i).getLatitude();
+      const double GND_LON  = groundStations.at(i).getLongitude();
+      const double GND_HAE  = groundStations.at(i).getHAE();
+      const uint32_t GND_ID = groundStations.at(i).getID();
+      gndId2VisSats[GND_ID].clear();
+      bool currSatInView  = false;
+      for(std::size_t j=0; j<satellites.size(); j++) {
+        const std::array<double,3> SAT_ECI_POSN_KM =
+         satellites.at(j).getECIPosn();
+        if(cote::util::calcElevationDeg(
+         JD, SEC, NS, GND_LAT, GND_LON, GND_HAE, SAT_ECI_POSN_KM
+        )>=10.0) {
+          gndId2VisSats[GND_ID].push_back(&(satellites.at(j)));
+          if(
+           gndId2CurrSat[GND_ID]!=nullptr &&
+           gndId2CurrSat[GND_ID]==gndId2VisSats[GND_ID].back() // same pointer
+          ) {
+            currSatInView = true;
+          }
+        }
+      }
+      // This removes a sat/gnd channel once the satellite goes out of view
+      if(!currSatInView && gndId2CurrSat[GND_ID]!=nullptr) {
+        const uint32_t SAT_ID = gndId2CurrSat[GND_ID]->getID();
+        satId2RxSm[SAT_ID]->setVariableValue("channel-available",0.0);
+        satId2TxSm[SAT_ID]->setVariableValue("channel-available",0.0);
+        satId2RxOccupied[SAT_ID] = false;
+        satId2TxOccupied[SAT_ID] = false;
+        gndId2CurrSat[GND_ID] = nullptr;
+      }
+    }
+    // Separate loop to construct channels to make informed choice of satellite
+    for(std::size_t i=0; i<groundStations.size(); i++) {
+      const uint32_t GND_ID = groundStations.at(i).getID();
+      // If no current link, choose a visible satellite
+      // Best satellite policy:
+      //   - visible (i.e. in gndId2VisSats)
+      //   - has most data to downlink (heurisic; data may not be read out yet)
+      if(gndId2CurrSat[GND_ID]==nullptr) {
+        cote::Satellite* bestSat = nullptr;
+        uint64_t bestSatBuffer = 0;
+        for(std::size_t j=0; j<gndId2VisSats[GND_ID].size(); j++) {
+          cote::Satellite* satj = gndId2VisSats[GND_ID].at(j);
+          const uint32_t SAT_ID = satj->getID();
+          const uint64_t BUF = satId2Sensor[SAT_ID]->getBitsBuffered();
+          // Don't select a satellite that is already transmitting
+          if(!satId2TxOccupied[SAT_ID] && BUF>bestSatBuffer) {
+            bestSat = satj;
+            bestSatBuffer = BUF;
+          }
+          satj = nullptr;
+        }
+        if(bestSat!=nullptr) {
+          const uint32_t SAT_ID = bestSat->getID();
+          satId2RxSm[SAT_ID]->setVariableValue("channel-available",1.0);
+          satId2TxSm[SAT_ID]->setVariableValue("channel-available",1.0);
+          satId2RxOccupied[SAT_ID] = true;
+          satId2TxOccupied[SAT_ID] = true;
+          gndId2CurrSat[GND_ID] = bestSat;
+        }
+        bestSat = nullptr;
+      }
+      // Construct downlink and uplink if available
+      if(gndId2CurrSat[GND_ID]!=nullptr) {
+        const uint32_t SAT_ID = gndId2CurrSat[GND_ID]->getID();
+        // Construct downlink
+        downlinks.push_back(
+         cote::Channel(
+          satId2Tx[SAT_ID],gndId2Rx[GND_ID],
+          satId2TxCenterFrequencyHz[SAT_ID],satId2TxBandwidthHz[SAT_ID],
+          &dateTime,&log
+         )
+        );
+        // Data downlink
+        if(satId2TxSm[SAT_ID]->getCurrentState()=="TX") {
+          const uint64_t TX_BITS = static_cast<uint64_t>(std::round(
+           static_cast<double>(downlinks.back().getBitsPerSec())*totalStepInSec
+          ));
+          satId2Sensor[SAT_ID]->drainBuffer(TX_BITS);
+          if(TX_BITS<=satId2TxBufferBits[SAT_ID]) {
+            satId2TxBufferBits[SAT_ID] -= TX_BITS;
+          } else {
+            satId2TxBufferBits[SAT_ID] = 0;
+            satId2TxSm[SAT_ID]->setVariableValue("data-available",0.0);
+          }
+        }
+        // Construct uplink
+        uplinks.push_back(
+         cote::Channel(
+          gndId2Tx[GND_ID],satId2Rx[SAT_ID],
+          gndId2TxCenterFrequencyHz[GND_ID],gndId2TxBandwidthHz[GND_ID],
+          &dateTime,&log
+         )
+        );
+      }
     }
     // Update simulation to the next time step
     dateTime.update(hourStep,minuteStep,secondStep,nsStep);
     for(std::size_t i=0; i<satellites.size(); i++) {
       const uint32_t SAT_ID = satellites.at(i).getID();
       satellites.at(i).update(hourStep,minuteStep,secondStep,nsStep);
-      const std::array<double,3> posn = satellites.at(i).getECIPosn();
-      satId2Sensor[SAT_ID]->setECIPosn(posn);
-      satId2Sensor[SAT_ID]->update(
-       hourStep,minuteStep,secondStep,nsStep
-      );
-      satId2Rx[SAT_ID]->setPosn(posn);
-      satId2Rx[SAT_ID]->update(hourStep,minuteStep,secondStep,nsStep);
-      satId2Tx[SAT_ID]->setPosn(posn);
-      satId2Tx[SAT_ID]->update(hourStep,minuteStep,secondStep,nsStep);
-      double capacitorChargeCoulomb =
-       satId2Capacitor[SAT_ID]->getChargeCoulomb();
-      const double totalLoadCurrentAmpere = (
-       satId2AdacsSm[SAT_ID]->getVariableValue("power-w")+
-       satId2CameraSm[SAT_ID]->getVariableValue("power-w")+
-       satId2ComputerSm[SAT_ID]->getVariableValue("power-w")+
-       satId2RxSm[SAT_ID]->getVariableValue("power-w")+
-       satId2TxSm[SAT_ID]->getVariableValue("power-w")
-      )/satId2NodeVoltage[SAT_ID];
-      capacitorChargeCoulomb += (
-       satId2SolarArray[SAT_ID]->getCurrentAmpere()-totalLoadCurrentAmpere
-      )*totalStepInSec;
-      if(capacitorChargeCoulomb<0.0) {
-        capacitorChargeCoulomb = 0.0;
-      }
-      satId2Capacitor[SAT_ID]->setChargeCoulomb(capacitorChargeCoulomb);
-      if(satId2ComputerSm[SAT_ID]->getCurrentState()=="WORK") {
-        double workTimeS =
-         satId2ComputerSm[SAT_ID]->getVariableValue("work-time-s");
-        satId2ComputerSm[SAT_ID]->setVariableValue(
-         "work-time-s",workTimeS+totalStepInSec
-        );
-      }
+      const std::array<double,3> SAT_ECI_POSN_KM =
+       satellites.at(i).getECIPosn();
       if(satId2CameraSm[SAT_ID]->getCurrentState()=="IMAGING") {
         double imagingTimeS =
          satId2CameraSm[SAT_ID]->getVariableValue("imaging-time-s");
@@ -1019,16 +1018,78 @@ int main(int argc, char** argv) {
          "readout-time-s",readoutTimeS+totalStepInSec
         );
       }
-      // Energy system update
-
+      if(satId2ComputerSm[SAT_ID]->getCurrentState()=="WORK") {
+        double workTimeS =
+         satId2ComputerSm[SAT_ID]->getVariableValue("work-time-s");
+        satId2ComputerSm[SAT_ID]->setVariableValue(
+         "work-time-s",workTimeS+totalStepInSec
+        );
+      }
+      satId2Rx[SAT_ID]->setPosn(SAT_ECI_POSN_KM);
+      satId2Rx[SAT_ID]->update(hourStep,minuteStep,secondStep,nsStep);
+      satId2Tx[SAT_ID]->setPosn(SAT_ECI_POSN_KM);
+      satId2Tx[SAT_ID]->update(hourStep,minuteStep,secondStep,nsStep);
+      satId2Sensor[SAT_ID]->setECIPosn(SAT_ECI_POSN_KM);
+      satId2Sensor[SAT_ID]->update(hourStep,minuteStep,secondStep,nsStep);
+      double powerW =
+       satId2AdacsSm[SAT_ID]->getVariableValue("power-w")+
+       satId2CameraSm[SAT_ID]->getVariableValue("power-w")+
+       satId2ComputerSm[SAT_ID]->getVariableValue("power-w")+
+       satId2RxSm[SAT_ID]->getVariableValue("power-w")+
+       satId2TxSm[SAT_ID]->getVariableValue("power-w");
+      double nodeVoltageDiscriminant = cote::util::calcNodeVoltageDiscriminant(
+       satId2Capacitor[SAT_ID]->getChargeCoulomb(),
+       satId2Capacitor[SAT_ID]->getCapacitanceFarad(),
+       satId2SolarArray[SAT_ID]->getCurrentAmpere(),
+       satId2Capacitor[SAT_ID]->getEsrOhm(), powerW
+      );
+      if(nodeVoltageDiscriminant<0.0) { // if power draw too high, turn all off
+        satId2AdacsSm[SAT_ID]->setCurrentState("OFF");
+        satId2CameraSm[SAT_ID]->setCurrentState("OFF");
+        satId2ComputerSm[SAT_ID]->setCurrentState("OFF");
+        satId2RxSm[SAT_ID]->setCurrentState("OFF");
+        satId2TxSm[SAT_ID]->setCurrentState("OFF");
+        powerW =
+         satId2AdacsSm[SAT_ID]->getVariableValue("power-w")+
+         satId2CameraSm[SAT_ID]->getVariableValue("power-w")+
+         satId2ComputerSm[SAT_ID]->getVariableValue("power-w")+
+         satId2RxSm[SAT_ID]->getVariableValue("power-w")+
+         satId2TxSm[SAT_ID]->getVariableValue("power-w");
+        nodeVoltageDiscriminant = cote::util::calcNodeVoltageDiscriminant(
+         satId2Capacitor[SAT_ID]->getChargeCoulomb(),
+         satId2Capacitor[SAT_ID]->getCapacitanceFarad(),
+         satId2SolarArray[SAT_ID]->getCurrentAmpere(),
+         satId2Capacitor[SAT_ID]->getEsrOhm(), powerW
+        );
+      }
+      const double nodeVoltage = cote::util::calcNodeVoltage(
+       nodeVoltageDiscriminant, satId2Capacitor[SAT_ID]->getChargeCoulomb(),
+       satId2Capacitor[SAT_ID]->getCapacitanceFarad(),
+       satId2SolarArray[SAT_ID]->getCurrentAmpere(),
+       satId2Capacitor[SAT_ID]->getEsrOhm()
+      );
+      if(
+       satId2SolarArray[SAT_ID]->getOpenCircuitVoltage()<=nodeVoltage &&
+       satId2SolarArray[SAT_ID]->getCurrentAmpere()!=0.0
+      ) { // Zero out solar array current if node voltage is too high
+        satId2SolarArray[SAT_ID]->setCurrentAmpere(0.0);
+      }
+      // Set node voltage for all state machines
+      satId2AdacsSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
+      satId2CameraSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
+      satId2ComputerSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
+      satId2RxSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
+      satId2TxSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
+      satId2NodeVoltage[SAT_ID] = nodeVoltage;
     }
     for(std::size_t i=0; i<groundStations.size(); i++) {
       const uint32_t GND_ID = groundStations.at(i).getID();
       groundStations.at(i).update(hourStep,minuteStep,secondStep,nsStep);
-      const std::array<double,3> posn = groundStations.at(i).getECIPosn();
-      gndId2Rx[GND_ID]->setPosn(posn);
+      const std::array<double,3> GND_ECI_POSN_KM =
+       groundStations.at(i).getECIPosn();
+      gndId2Rx[GND_ID]->setPosn(GND_ECI_POSN_KM);
       gndId2Rx[GND_ID]->update(hourStep,minuteStep,secondStep,nsStep);
-      gndId2Tx[GND_ID]->setPosn(posn);
+      gndId2Tx[GND_ID]->setPosn(GND_ECI_POSN_KM);
       gndId2Tx[GND_ID]->update(hourStep,minuteStep,secondStep,nsStep);
     }
     // Increment step count
