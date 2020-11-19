@@ -221,6 +221,15 @@ int main(int argc, char** argv) {
   // Set up log
   std::vector<cote::LogLevel> levels = {cote::LogLevel::INFO};
   cote::Log log(levels,logDirectory.string());
+  // Data for logging logic
+  std::map<uint32_t,std::pair<double,double>> satId2PrevNodeVoltages;
+  std::map<uint32_t,std::string> satId2PrevAdacsState;
+  std::map<uint32_t,std::string> satId2PrevCameraState;
+  std::map<uint32_t,std::string> satId2PrevComputerState;
+  std::map<uint32_t,std::string> satId2PrevRxState;
+  std::map<uint32_t,std::string> satId2PrevTxState;
+  std::map<uint32_t,std::pair<double,double>> satId2PrevDownlinkMbps;
+  std::map<uint32_t,std::pair<double,double>> satId2PrevUplinkMbps;
   // Set up date and time
   std::ifstream dateTimeHandle(dateTimeFile.string());
   std::string line = "";
@@ -292,7 +301,10 @@ int main(int argc, char** argv) {
   );
   std::map<uint32_t,cote::Satellite*> satId2Sat;
   for(std::size_t i=0; i<satellites.size(); i++) {
-    satId2Sat[satellites.at(i).getID()] = &(satellites.at(i));
+    const uint32_t SAT_ID = satellites.at(i).getID();
+    satId2Sat[SAT_ID] = &(satellites.at(i));
+    satId2PrevDownlinkMbps[SAT_ID] = std::make_pair(0.0,0.0);
+    satId2PrevUplinkMbps[SAT_ID] = std::make_pair(0.0,0.0);
   }
   // Set up solar arrays
   std::map<uint32_t,cote::SolarArray*> satId2SolarArray;
@@ -444,15 +456,87 @@ int main(int argc, char** argv) {
     satId2RxSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
     satId2TxSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
     satId2NodeVoltage[SAT_ID] = nodeVoltage;
+    satId2PrevNodeVoltages[SAT_ID] = std::make_pair(0.0,nodeVoltage);
     // Update state for each state machine
     // After calculating the initial values for all state machine variables,
     // updateState must be called so that they are in the correct state for the
     // first time step
+    satId2PrevAdacsState[SAT_ID] =
+     satId2AdacsSm[SAT_ID]->getCurrentState();
+    satId2PrevCameraState[SAT_ID] =
+     satId2CameraSm[SAT_ID]->getCurrentState();
+    satId2PrevComputerState[SAT_ID] =
+     satId2ComputerSm[SAT_ID]->getCurrentState();
+    satId2PrevRxState[SAT_ID] =
+     satId2RxSm[SAT_ID]->getCurrentState();
+    satId2PrevTxState[SAT_ID] =
+     satId2TxSm[SAT_ID]->getCurrentState();
     satId2AdacsSm[SAT_ID]->updateState();
     satId2CameraSm[SAT_ID]->updateState();
     satId2ComputerSm[SAT_ID]->updateState();
     satId2RxSm[SAT_ID]->updateState();
     satId2TxSm[SAT_ID]->updateState();
+    if(
+     satId2AdacsSm[SAT_ID]->getCurrentState()!=satId2PrevAdacsState[SAT_ID]
+    ) {
+      std::ostringstream oss;
+      oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+      log.meas(
+       cote::LogLevel::INFO,
+       dateTime.toString(),
+       std::string(oss.str()+"-adacs-state"),
+       std::string(satId2AdacsSm[SAT_ID]->getCurrentState())
+      );
+    }
+    if(
+     satId2CameraSm[SAT_ID]->getCurrentState()!=satId2PrevCameraState[SAT_ID]
+    ) {
+      std::ostringstream oss;
+      oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+      log.meas(
+       cote::LogLevel::INFO,
+       dateTime.toString(),
+       std::string(oss.str()+"-camera-state"),
+       std::string(satId2CameraSm[SAT_ID]->getCurrentState())
+      );
+    }
+    if(
+     satId2ComputerSm[SAT_ID]->getCurrentState()!=
+     satId2PrevComputerState[SAT_ID]
+    ) {
+      std::ostringstream oss;
+      oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+      log.meas(
+       cote::LogLevel::INFO,
+       dateTime.toString(),
+       std::string(oss.str()+"-computer-state"),
+       std::string(satId2ComputerSm[SAT_ID]->getCurrentState())
+      );
+    }
+    if(
+     satId2RxSm[SAT_ID]->getCurrentState()!=satId2PrevRxState[SAT_ID]
+    ) {
+      std::ostringstream oss;
+      oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+      log.meas(
+       cote::LogLevel::INFO,
+       dateTime.toString(),
+       std::string(oss.str()+"-rx-state"),
+       std::string(satId2RxSm[SAT_ID]->getCurrentState())
+      );
+    }
+    if(
+     satId2TxSm[SAT_ID]->getCurrentState()!=satId2PrevTxState[SAT_ID]
+    ) {
+      std::ostringstream oss;
+      oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+      log.meas(
+       cote::LogLevel::INFO,
+       dateTime.toString(),
+       std::string(oss.str()+"-tx-state"),
+       std::string(satId2TxSm[SAT_ID]->getCurrentState())
+      );
+    }
   }
   // Set up satellite RX
   std::map<uint32_t,cote::Receiver*> satId2Rx;
@@ -811,6 +895,15 @@ int main(int argc, char** argv) {
           // for transmission to ground
           satId2TxSm[SAT_ID]->setVariableValue("data-available",1.0);
           satId2TxBufferBits[SAT_ID] += satId2Sensor[SAT_ID]->getBitsPerSense();
+          // Log the tile count for the image read out
+          std::ostringstream oss;
+          oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+          log.meas(
+           cote::LogLevel::INFO,
+           dateTime.toString(),
+           std::string(oss.str()+"-tile-count"),
+           std::to_string(tilesPerImage)
+          );
         }
         satId2CameraSm[SAT_ID]->setVariableValue("readout-time-s",readoutTimeS);
         satId2CameraSm[SAT_ID]->setVariableValue(
@@ -890,6 +983,33 @@ int main(int argc, char** argv) {
         satId2GSDs[SAT_ID].push(
          satId2PixelSizeM[SAT_ID]*SAT_ALT_KM*cote::cnst::M_PER_KM/
          satId2FocalLengthM[SAT_ID]
+        );
+        // Log the sense trigger event
+        std::ostringstream oss;
+        oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+        log.meas(
+         cote::LogLevel::INFO,
+         dateTime.toString(),
+         std::string(oss.str()+"-alt-km"),
+         std::to_string(SAT_ALT_KM)
+        );
+        log.meas(
+         cote::LogLevel::INFO,
+         dateTime.toString(),
+         std::string(oss.str()+"-x-km"),
+         std::to_string(SAT_ECI_POSN_KM.at(0))
+        );
+        log.meas(
+         cote::LogLevel::INFO,
+         dateTime.toString(),
+         std::string(oss.str()+"-y-km"),
+         std::to_string(SAT_ECI_POSN_KM.at(1))
+        );
+        log.meas(
+         cote::LogLevel::INFO,
+         dateTime.toString(),
+         std::string(oss.str()+"-x-km"),
+         std::to_string(SAT_ECI_POSN_KM.at(2))
         );
       }
       // Simulate satellite program
@@ -988,6 +1108,37 @@ int main(int argc, char** argv) {
             satId2TxSm[SAT_ID]->setVariableValue("data-available",0.0);
           }
         }
+        // Log downlink Mbps when the sign of slope surrogate changes
+        // NOTE: oldest first second current
+        double downlinkMbps =
+         static_cast<double>(downlinks.back().getBitsPerSec())/1.0e6;
+        double prevDiffD =
+         satId2PrevDownlinkMbps[SAT_ID].second-
+         satId2PrevDownlinkMbps[SAT_ID].first;
+        int prevSignD = (prevDiffD>0.0) ? 1 : ((prevDiffD<0.0) ? -1 : 0);
+        double currDiffD = downlinkMbps-satId2PrevDownlinkMbps[SAT_ID].second;
+        int currSignD = (currDiffD>0.0) ? 1 : ((currDiffD<0.0) ? -1 : 0);
+        if(prevSignD!=currSignD) {
+          std::ostringstream oss;
+          oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+          log.meas(
+           cote::LogLevel::INFO,
+           dateTime.toString(),
+           std::string(oss.str()+"-downlink-Mbps"),
+           std::to_string(downlinkMbps)
+          );
+          //log.meas(
+          // cote::LogLevel::INFO,
+          // dateTime.toString(),
+          // std::string("downlink-tx-rx"),
+          // std::to_string(downlinks.back().getTransmitter()->getID())+"-"+
+          //  std::to_string(downlinks.back().getReceiver()->getID())
+          //);
+        }
+        // Update downlink Mbps history regardless
+        satId2PrevDownlinkMbps[SAT_ID].first =
+         satId2PrevDownlinkMbps[SAT_ID].second;
+        satId2PrevDownlinkMbps[SAT_ID].second = downlinkMbps;
         // Construct uplink
         uplinks.push_back(
          cote::Channel(
@@ -996,6 +1147,37 @@ int main(int argc, char** argv) {
           &dateTime,&log
          )
         );
+        // Log uplink Mbps when the sign of slope surrogate changes
+        // NOTE: oldest first second current
+        double uplinkMbps =
+         static_cast<double>(uplinks.back().getBitsPerSec())/1.0e6;
+        double prevDiffU =
+         satId2PrevUplinkMbps[SAT_ID].second-
+         satId2PrevUplinkMbps[SAT_ID].first;
+        int prevSignU = (prevDiffU>0.0) ? 1 : ((prevDiffU<0.0) ? -1 : 0);
+        double currDiffU = uplinkMbps-satId2PrevUplinkMbps[SAT_ID].second;
+        int currSignU = (currDiffU>0.0) ? 1 : ((currDiffU<0.0) ? -1 : 0);
+        if(prevSignU!=currSignU) {
+          std::ostringstream oss;
+          oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+          log.meas(
+           cote::LogLevel::INFO,
+           dateTime.toString(),
+           std::string(oss.str()+"-uplink-Mbps"),
+           std::to_string(uplinkMbps)
+          );
+          //log.meas(
+          // cote::LogLevel::INFO,
+          // dateTime.toString(),
+          // std::string("uplink-rx-tx"),
+          // std::to_string(uplinks.back().getReceiver()->getID())+"-"+
+          //  std::to_string(uplinks.back().getTransmitter()->getID())
+          //);
+        }
+        // Update uplink Mbps history regardless
+        satId2PrevUplinkMbps[SAT_ID].first =
+         satId2PrevUplinkMbps[SAT_ID].second;
+        satId2PrevUplinkMbps[SAT_ID].second = uplinkMbps;
       }
     }
     // Update simulation to the next time step
@@ -1081,6 +1263,105 @@ int main(int argc, char** argv) {
       satId2RxSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
       satId2TxSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
       satId2NodeVoltage[SAT_ID] = nodeVoltage;
+      // Log node voltage when the sign of slope surrogate changes
+      // NOTE: oldest first second current
+      double prevDiff =
+       satId2PrevNodeVoltages[SAT_ID].second-
+       satId2PrevNodeVoltages[SAT_ID].first;
+      int prevSign = (prevDiff>0.0) ? 1 : ((prevDiff<0.0) ? -1 : 0);
+      double currDiff = nodeVoltage-satId2PrevNodeVoltages[SAT_ID].second;
+      int currSign = (currDiff>0.0) ? 1 : ((currDiff<0.0) ? -1 : 0);
+      if(prevSign!=currSign) {
+        std::ostringstream oss;
+        oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+        log.meas(
+         cote::LogLevel::INFO,
+         dateTime.toString(),
+         std::string(oss.str()+"-node-voltage"),
+         std::to_string(nodeVoltage)
+        );
+      }
+      // Update node voltage history regardless
+      satId2PrevNodeVoltages[SAT_ID].first =
+       satId2PrevNodeVoltages[SAT_ID].second;
+      satId2PrevNodeVoltages[SAT_ID].second = nodeVoltage;
+      // Update state machine states and log state if changed
+      satId2PrevAdacsState[SAT_ID] =
+       satId2AdacsSm[SAT_ID]->getCurrentState();
+      satId2PrevCameraState[SAT_ID] =
+       satId2CameraSm[SAT_ID]->getCurrentState();
+      satId2PrevComputerState[SAT_ID] =
+       satId2ComputerSm[SAT_ID]->getCurrentState();
+      satId2PrevRxState[SAT_ID] =
+       satId2RxSm[SAT_ID]->getCurrentState();
+      satId2PrevTxState[SAT_ID] =
+       satId2TxSm[SAT_ID]->getCurrentState();
+      satId2AdacsSm[SAT_ID]->updateState();
+      satId2CameraSm[SAT_ID]->updateState();
+      satId2ComputerSm[SAT_ID]->updateState();
+      satId2RxSm[SAT_ID]->updateState();
+      satId2TxSm[SAT_ID]->updateState();
+      if(
+       satId2AdacsSm[SAT_ID]->getCurrentState()!=satId2PrevAdacsState[SAT_ID]
+      ) {
+        std::ostringstream oss;
+        oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+        log.meas(
+         cote::LogLevel::INFO,
+         dateTime.toString(),
+         std::string(oss.str()+"-adacs-state"),
+         std::string(satId2AdacsSm[SAT_ID]->getCurrentState())
+        );
+      }
+      if(
+       satId2CameraSm[SAT_ID]->getCurrentState()!=satId2PrevCameraState[SAT_ID]
+      ) {
+        std::ostringstream oss;
+        oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+        log.meas(
+         cote::LogLevel::INFO,
+         dateTime.toString(),
+         std::string(oss.str()+"-camera-state"),
+         std::string(satId2CameraSm[SAT_ID]->getCurrentState())
+        );
+      }
+      if(
+       satId2ComputerSm[SAT_ID]->getCurrentState()!=
+       satId2PrevComputerState[SAT_ID]
+      ) {
+        std::ostringstream oss;
+        oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+        log.meas(
+         cote::LogLevel::INFO,
+         dateTime.toString(),
+         std::string(oss.str()+"-computer-state"),
+         std::string(satId2ComputerSm[SAT_ID]->getCurrentState())
+        );
+      }
+      if(
+       satId2RxSm[SAT_ID]->getCurrentState()!=satId2PrevRxState[SAT_ID]
+      ) {
+        std::ostringstream oss;
+        oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+        log.meas(
+         cote::LogLevel::INFO,
+         dateTime.toString(),
+         std::string(oss.str()+"-rx-state"),
+         std::string(satId2RxSm[SAT_ID]->getCurrentState())
+        );
+      }
+      if(
+       satId2TxSm[SAT_ID]->getCurrentState()!=satId2PrevTxState[SAT_ID]
+      ) {
+        std::ostringstream oss;
+        oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+        log.meas(
+         cote::LogLevel::INFO,
+         dateTime.toString(),
+         std::string(oss.str()+"-tx-state"),
+         std::string(satId2TxSm[SAT_ID]->getCurrentState())
+        );
+      }
     }
     for(std::size_t i=0; i<groundStations.size(); i++) {
       const uint32_t GND_ID = groundStations.at(i).getID();
