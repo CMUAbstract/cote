@@ -483,7 +483,8 @@ int main(int argc, char** argv) {
       oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
       log.meas(
        cote::LogLevel::INFO,
-       dateTime.toString(),
+       //dateTime.toString(),
+       std::to_string(0),
        std::string(oss.str()+"-adacs-state"),
        std::string(satId2AdacsSm[SAT_ID]->getCurrentState())
       );
@@ -495,7 +496,8 @@ int main(int argc, char** argv) {
       oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
       log.meas(
        cote::LogLevel::INFO,
-       dateTime.toString(),
+       //dateTime.toString(),
+       std::to_string(0),
        std::string(oss.str()+"-camera-state"),
        std::string(satId2CameraSm[SAT_ID]->getCurrentState())
       );
@@ -508,7 +510,8 @@ int main(int argc, char** argv) {
       oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
       log.meas(
        cote::LogLevel::INFO,
-       dateTime.toString(),
+       //dateTime.toString(),
+       std::to_string(0),
        std::string(oss.str()+"-computer-state"),
        std::string(satId2ComputerSm[SAT_ID]->getCurrentState())
       );
@@ -520,7 +523,8 @@ int main(int argc, char** argv) {
       oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
       log.meas(
        cote::LogLevel::INFO,
-       dateTime.toString(),
+       //dateTime.toString(),
+       std::to_string(0),
        std::string(oss.str()+"-rx-state"),
        std::string(satId2RxSm[SAT_ID]->getCurrentState())
       );
@@ -532,7 +536,8 @@ int main(int argc, char** argv) {
       oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
       log.meas(
        cote::LogLevel::INFO,
-       dateTime.toString(),
+       //dateTime.toString(),
+       std::to_string(0),
        std::string(oss.str()+"-tx-state"),
        std::string(satId2TxSm[SAT_ID]->getCurrentState())
       );
@@ -900,7 +905,8 @@ int main(int argc, char** argv) {
           oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
           log.meas(
            cote::LogLevel::INFO,
-           dateTime.toString(),
+           //dateTime.toString(),
+           std::to_string(stepCount),
            std::string(oss.str()+"-tile-count"),
            std::to_string(tilesPerImage)
           );
@@ -989,26 +995,30 @@ int main(int argc, char** argv) {
         oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
         log.meas(
          cote::LogLevel::INFO,
-         dateTime.toString(),
+         //dateTime.toString(),
+         std::to_string(stepCount),
          std::string(oss.str()+"-alt-km"),
          std::to_string(SAT_ALT_KM)
         );
         log.meas(
          cote::LogLevel::INFO,
-         dateTime.toString(),
+         //dateTime.toString(),
+         std::to_string(stepCount),
          std::string(oss.str()+"-x-km"),
          std::to_string(SAT_ECI_POSN_KM.at(0))
         );
         log.meas(
          cote::LogLevel::INFO,
-         dateTime.toString(),
+         //dateTime.toString(),
+         std::to_string(stepCount),
          std::string(oss.str()+"-y-km"),
          std::to_string(SAT_ECI_POSN_KM.at(1))
         );
         log.meas(
          cote::LogLevel::INFO,
-         dateTime.toString(),
-         std::string(oss.str()+"-x-km"),
+         //dateTime.toString(),
+         std::to_string(stepCount),
+         std::string(oss.str()+"-z-km"),
          std::to_string(SAT_ECI_POSN_KM.at(2))
         );
       }
@@ -1107,38 +1117,43 @@ int main(int argc, char** argv) {
             satId2TxBufferBits[SAT_ID] = 0;
             satId2TxSm[SAT_ID]->setVariableValue("data-available",0.0);
           }
+          // Log downlink Mbps when the sign of slope surrogate changes
+          // NOTE: oldest first second current
+          double smoothedBitsPerSec = static_cast<double>(std::round(
+           static_cast<double>(downlinks.back().getBitsPerSec())/100000.0
+          )*100000);
+          //double downlinkMbps =
+          // static_cast<double>(downlinks.back().getBitsPerSec())/1.0e6;
+          double downlinkMbps = smoothedBitsPerSec/1.0e6;
+          double prevDiff =
+           satId2PrevDownlinkMbps[SAT_ID].second-
+           satId2PrevDownlinkMbps[SAT_ID].first;
+          int prevSign = (prevDiff>0.0) ? 1 : ((prevDiff<0.0) ? -1 : 0);
+          double currDiff = downlinkMbps-satId2PrevDownlinkMbps[SAT_ID].second;
+          int currSign = (currDiff>0.0) ? 1 : ((currDiff<0.0) ? -1 : 0);
+          if(prevSign!=currSign) {
+            std::ostringstream oss;
+            oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+            log.meas(
+             cote::LogLevel::INFO,
+             //dateTime.toString(),
+             std::to_string(stepCount),
+             std::string(oss.str()+"-downlink-Mbps"),
+             std::to_string(downlinkMbps)
+            );
+            log.meas(
+             cote::LogLevel::INFO,
+             //dateTime.toString(),
+             std::to_string(stepCount),
+             std::string(oss.str()+"-downlink-dst"),
+             std::to_string(downlinks.back().getReceiver()->getID())
+            );
+          }
+          // Update downlink Mbps history
+          satId2PrevDownlinkMbps[SAT_ID].first =
+           satId2PrevDownlinkMbps[SAT_ID].second;
+          satId2PrevDownlinkMbps[SAT_ID].second = downlinkMbps;
         }
-        // Log downlink Mbps when the sign of slope surrogate changes
-        // NOTE: oldest first second current
-        double downlinkMbps =
-         static_cast<double>(downlinks.back().getBitsPerSec())/1.0e6;
-        double prevDiffD =
-         satId2PrevDownlinkMbps[SAT_ID].second-
-         satId2PrevDownlinkMbps[SAT_ID].first;
-        int prevSignD = (prevDiffD>0.0) ? 1 : ((prevDiffD<0.0) ? -1 : 0);
-        double currDiffD = downlinkMbps-satId2PrevDownlinkMbps[SAT_ID].second;
-        int currSignD = (currDiffD>0.0) ? 1 : ((currDiffD<0.0) ? -1 : 0);
-        if(prevSignD!=currSignD) {
-          std::ostringstream oss;
-          oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
-          log.meas(
-           cote::LogLevel::INFO,
-           dateTime.toString(),
-           std::string(oss.str()+"-downlink-Mbps"),
-           std::to_string(downlinkMbps)
-          );
-          //log.meas(
-          // cote::LogLevel::INFO,
-          // dateTime.toString(),
-          // std::string("downlink-tx-rx"),
-          // std::to_string(downlinks.back().getTransmitter()->getID())+"-"+
-          //  std::to_string(downlinks.back().getReceiver()->getID())
-          //);
-        }
-        // Update downlink Mbps history regardless
-        satId2PrevDownlinkMbps[SAT_ID].first =
-         satId2PrevDownlinkMbps[SAT_ID].second;
-        satId2PrevDownlinkMbps[SAT_ID].second = downlinkMbps;
         // Construct uplink
         uplinks.push_back(
          cote::Channel(
@@ -1147,37 +1162,45 @@ int main(int argc, char** argv) {
           &dateTime,&log
          )
         );
-        // Log uplink Mbps when the sign of slope surrogate changes
-        // NOTE: oldest first second current
-        double uplinkMbps =
-         static_cast<double>(uplinks.back().getBitsPerSec())/1.0e6;
-        double prevDiffU =
-         satId2PrevUplinkMbps[SAT_ID].second-
-         satId2PrevUplinkMbps[SAT_ID].first;
-        int prevSignU = (prevDiffU>0.0) ? 1 : ((prevDiffU<0.0) ? -1 : 0);
-        double currDiffU = uplinkMbps-satId2PrevUplinkMbps[SAT_ID].second;
-        int currSignU = (currDiffU>0.0) ? 1 : ((currDiffU<0.0) ? -1 : 0);
-        if(prevSignU!=currSignU) {
-          std::ostringstream oss;
-          oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
-          log.meas(
-           cote::LogLevel::INFO,
-           dateTime.toString(),
-           std::string(oss.str()+"-uplink-Mbps"),
-           std::to_string(uplinkMbps)
-          );
-          //log.meas(
-          // cote::LogLevel::INFO,
-          // dateTime.toString(),
-          // std::string("uplink-rx-tx"),
-          // std::to_string(uplinks.back().getReceiver()->getID())+"-"+
-          //  std::to_string(uplinks.back().getTransmitter()->getID())
-          //);
+        // Data uplink
+        if(satId2RxSm[SAT_ID]->getCurrentState()=="RX") {
+          // Log uplink Mbps when the sign of slope surrogate changes
+          // NOTE: oldest first second current
+          double smoothedBitsPerSec = static_cast<double>(std::round(
+           static_cast<double>(uplinks.back().getBitsPerSec())/100000.0
+          )*100000);
+          //double uplinkMbps =
+          // static_cast<double>(uplinks.back().getBitsPerSec())/1.0e6;
+          double uplinkMbps = smoothedBitsPerSec/1.0e6;
+          double prevDiff =
+           satId2PrevUplinkMbps[SAT_ID].second-
+           satId2PrevUplinkMbps[SAT_ID].first;
+          int prevSign = (prevDiff>0.0) ? 1 : ((prevDiff<0.0) ? -1 : 0);
+          double currDiff = uplinkMbps-satId2PrevUplinkMbps[SAT_ID].second;
+          int currSign = (currDiff>0.0) ? 1 : ((currDiff<0.0) ? -1 : 0);
+          if(prevSign!=currSign) {
+            std::ostringstream oss;
+            oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
+            log.meas(
+             cote::LogLevel::INFO,
+             //dateTime.toString(),
+             std::to_string(stepCount),
+             std::string(oss.str()+"-uplink-Mbps"),
+             std::to_string(uplinkMbps)
+            );
+            log.meas(
+             cote::LogLevel::INFO,
+             //dateTime.toString(),
+             std::to_string(stepCount),
+             std::string(oss.str()+"-uplink-src"),
+             std::to_string(uplinks.back().getTransmitter()->getID())
+            );
+          }
+          // Update uplink Mbps history
+          satId2PrevUplinkMbps[SAT_ID].first =
+           satId2PrevUplinkMbps[SAT_ID].second;
+          satId2PrevUplinkMbps[SAT_ID].second = uplinkMbps;
         }
-        // Update uplink Mbps history regardless
-        satId2PrevUplinkMbps[SAT_ID].first =
-         satId2PrevUplinkMbps[SAT_ID].second;
-        satId2PrevUplinkMbps[SAT_ID].second = uplinkMbps;
       }
     }
     // Update simulation to the next time step
@@ -1276,7 +1299,8 @@ int main(int argc, char** argv) {
         oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
         log.meas(
          cote::LogLevel::INFO,
-         dateTime.toString(),
+         //dateTime.toString(),
+         std::to_string(stepCount),
          std::string(oss.str()+"-node-voltage"),
          std::to_string(nodeVoltage)
         );
@@ -1308,7 +1332,8 @@ int main(int argc, char** argv) {
         oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
         log.meas(
          cote::LogLevel::INFO,
-         dateTime.toString(),
+         //dateTime.toString(),
+         std::to_string(stepCount),
          std::string(oss.str()+"-adacs-state"),
          std::string(satId2AdacsSm[SAT_ID]->getCurrentState())
         );
@@ -1320,7 +1345,8 @@ int main(int argc, char** argv) {
         oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
         log.meas(
          cote::LogLevel::INFO,
-         dateTime.toString(),
+         //dateTime.toString(),
+         std::to_string(stepCount),
          std::string(oss.str()+"-camera-state"),
          std::string(satId2CameraSm[SAT_ID]->getCurrentState())
         );
@@ -1333,7 +1359,8 @@ int main(int argc, char** argv) {
         oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
         log.meas(
          cote::LogLevel::INFO,
-         dateTime.toString(),
+         //dateTime.toString(),
+         std::to_string(stepCount),
          std::string(oss.str()+"-computer-state"),
          std::string(satId2ComputerSm[SAT_ID]->getCurrentState())
         );
@@ -1345,7 +1372,8 @@ int main(int argc, char** argv) {
         oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
         log.meas(
          cote::LogLevel::INFO,
-         dateTime.toString(),
+         //dateTime.toString(),
+         std::to_string(stepCount),
          std::string(oss.str()+"-rx-state"),
          std::string(satId2RxSm[SAT_ID]->getCurrentState())
         );
@@ -1357,7 +1385,8 @@ int main(int argc, char** argv) {
         oss << "sat-" << std::setw(10) << std::setfill('0') << SAT_ID;
         log.meas(
          cote::LogLevel::INFO,
-         dateTime.toString(),
+         //dateTime.toString(),
+         std::to_string(stepCount),
          std::string(oss.str()+"-tx-state"),
          std::string(satId2TxSm[SAT_ID]->getCurrentState())
         );
