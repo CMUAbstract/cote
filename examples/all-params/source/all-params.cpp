@@ -308,6 +308,7 @@ int main(int argc, char** argv) {
   }
   // Set up solar arrays
   std::map<uint32_t,cote::SolarArray*> satId2SolarArray;
+  std::map<uint32_t,double> satId2SunOcclusionFactor;
   for(std::size_t i=0; i<solarArrayFiles.size(); i++) {
     std::ifstream solarArrayHandle(solarArrayFiles.at(i).string());
     line = "";
@@ -334,6 +335,7 @@ int main(int argc, char** argv) {
     const std::array<double,3> SAT_ECI_POSN_KM = satId2Sat[id]->getECIPosn();
     const double sunOcclusionFactor =
      cote::util::calcSunOcclusionFactor(SAT_ECI_POSN_KM,SUN_ECI_POSN_KM);
+    satId2SunOcclusionFactor[id] = sunOcclusionFactor;
     //// When sunOcclusionFactor is 0.0, irradiance is SOLAR_CONSTANT
     //// When sunOcclusionFactor is 1.0, irradiance is 1% of SOLAR_CONSTANT
     //// -1352.44 is the slope needed to achieve the above effect
@@ -403,6 +405,11 @@ int main(int argc, char** argv) {
     satId2TxSm[id] = new cote::StateMachine(txSatSMFileStr,id,&log);
   }
   // Initialize the energy system for each satellite
+  // Note that the node voltage is being calculated for the first time, so a
+  // current cap cannot be applied to solarArray[SAT_ID]->getCurrentAmpere()
+  // This is OK so long as the initial conditions are sane and the time step is
+  // not too huge because it will be cut off during the next time step if the
+  // node voltage becomes too large
   std::map<uint32_t,double> satId2NodeVoltage;
   for(std::size_t i=0; i<satellites.size(); i++) {
     const uint32_t SAT_ID = satellites.at(i).getID();
@@ -443,12 +450,6 @@ int main(int argc, char** argv) {
      satId2SolarArray[SAT_ID]->getCurrentAmpere(),
      satId2Capacitor[SAT_ID]->getEsrOhm()
     );
-    if(
-     satId2SolarArray[SAT_ID]->getOpenCircuitVoltage()<=nodeVoltage &&
-     satId2SolarArray[SAT_ID]->getCurrentAmpere()!=0.0
-    ) { // Zero out solar array current if node voltage is too high
-      satId2SolarArray[SAT_ID]->setCurrentAmpere(0.0);
-    }
     // Set node voltage for all state machines
     satId2AdacsSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
     satId2CameraSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
@@ -457,6 +458,20 @@ int main(int argc, char** argv) {
     satId2TxSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
     satId2NodeVoltage[SAT_ID] = nodeVoltage;
     satId2PrevNodeVoltages[SAT_ID] = std::make_pair(0.0,nodeVoltage);
+    // Set the shade value for all state machines
+    if(satId2SunOcclusionFactor[SAT_ID]!=0.0) {
+      satId2AdacsSm[SAT_ID]->setVariableValue("shade",1.0);
+      satId2CameraSm[SAT_ID]->setVariableValue("shade",1.0);
+      satId2ComputerSm[SAT_ID]->setVariableValue("shade",1.0);
+      satId2RxSm[SAT_ID]->setVariableValue("shade",1.0);
+      satId2TxSm[SAT_ID]->setVariableValue("shade",1.0);
+    } else {
+      satId2AdacsSm[SAT_ID]->setVariableValue("shade",0.0);
+      satId2CameraSm[SAT_ID]->setVariableValue("shade",0.0);
+      satId2ComputerSm[SAT_ID]->setVariableValue("shade",0.0);
+      satId2RxSm[SAT_ID]->setVariableValue("shade",0.0);
+      satId2TxSm[SAT_ID]->setVariableValue("shade",0.0);
+    }
     // Update state for each state machine
     // After calculating the initial values for all state machine variables,
     // updateState must be called so that they are in the correct state for the
@@ -473,9 +488,14 @@ int main(int argc, char** argv) {
      satId2TxSm[SAT_ID]->getCurrentState();
     satId2AdacsSm[SAT_ID]->updateState();
     satId2CameraSm[SAT_ID]->updateState();
-    satId2ComputerSm[SAT_ID]->updateState();
     satId2RxSm[SAT_ID]->updateState();
     satId2TxSm[SAT_ID]->updateState();
+    if(satId2RxSm[SAT_ID]->getCurrentState()=="RX") {
+      satId2ComputerSm[SAT_ID]->setVariableValue("comms",1.0);
+    } else {
+      satId2ComputerSm[SAT_ID]->setVariableValue("comms",0.0);
+    }
+    satId2ComputerSm[SAT_ID]->updateState();
     if(
      satId2AdacsSm[SAT_ID]->getCurrentState()!=satId2PrevAdacsState[SAT_ID]
     ) {
@@ -813,6 +833,7 @@ int main(int argc, char** argv) {
       // Simulate solar array current
       const double sunOcclusionFactor =
        cote::util::calcSunOcclusionFactor(SAT_ECI_POSN_KM,SUN_ECI_POSN_KM);
+      satId2SunOcclusionFactor[SAT_ID] = sunOcclusionFactor;
       //// When sunOcclusionFactor is 0.0, irradiance is SOLAR_CONSTANT
       //// When sunOcclusionFactor is 1.0, irradiance is 1% of SOLAR_CONSTANT
       //// -1352.44 is the slope needed to achieve the above effect
@@ -820,6 +841,14 @@ int main(int argc, char** argv) {
        -1352.44*sunOcclusionFactor+cote::cnst::SOLAR_CONSTANT;
       //// setIrradianceWpM2 calculates and sets the appropriate output current
       satId2SolarArray[SAT_ID]->setIrradianceWpM2(irradianceWPerM2);
+      //// if needed, clip the output current based on most recent node voltage
+      if(
+       satId2SolarArray[SAT_ID]->getOpenCircuitVoltage()<=
+       satId2NodeVoltage[SAT_ID] &&
+       satId2SolarArray[SAT_ID]->getCurrentAmpere()!=0.0
+      ) { // Zero out solar array current if node voltage is too high
+        satId2SolarArray[SAT_ID]->setCurrentAmpere(0.0);
+      }
       // Simulate capacitor charge
       double capacitorChargeCoulomb =
        satId2Capacitor[SAT_ID]->getChargeCoulomb();
@@ -1106,7 +1135,7 @@ int main(int argc, char** argv) {
          )
         );
         // Data downlink
-        if(satId2TxSm[SAT_ID]->getCurrentState()=="TX") {
+        if(satId2RxSm[SAT_ID]->getCurrentState()=="RX") {
           const uint64_t TX_BITS = static_cast<uint64_t>(std::round(
            static_cast<double>(downlinks.back().getBitsPerSec())*totalStepInSec
           ));
@@ -1273,12 +1302,6 @@ int main(int argc, char** argv) {
        satId2SolarArray[SAT_ID]->getCurrentAmpere(),
        satId2Capacitor[SAT_ID]->getEsrOhm()
       );
-      if(
-       satId2SolarArray[SAT_ID]->getOpenCircuitVoltage()<=nodeVoltage &&
-       satId2SolarArray[SAT_ID]->getCurrentAmpere()!=0.0
-      ) { // Zero out solar array current if node voltage is too high
-        satId2SolarArray[SAT_ID]->setCurrentAmpere(0.0);
-      }
       // Set node voltage for all state machines
       satId2AdacsSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
       satId2CameraSm[SAT_ID]->setVariableValue("node-voltage",nodeVoltage);
@@ -1309,6 +1332,20 @@ int main(int argc, char** argv) {
       satId2PrevNodeVoltages[SAT_ID].first =
        satId2PrevNodeVoltages[SAT_ID].second;
       satId2PrevNodeVoltages[SAT_ID].second = nodeVoltage;
+      // Set the shade value for all state machines
+      if(satId2SunOcclusionFactor[SAT_ID]!=0.0) {
+        satId2AdacsSm[SAT_ID]->setVariableValue("shade",1.0);
+        satId2CameraSm[SAT_ID]->setVariableValue("shade",1.0);
+        satId2ComputerSm[SAT_ID]->setVariableValue("shade",1.0);
+        satId2RxSm[SAT_ID]->setVariableValue("shade",1.0);
+        satId2TxSm[SAT_ID]->setVariableValue("shade",1.0);
+      } else {
+        satId2AdacsSm[SAT_ID]->setVariableValue("shade",0.0);
+        satId2CameraSm[SAT_ID]->setVariableValue("shade",0.0);
+        satId2ComputerSm[SAT_ID]->setVariableValue("shade",0.0);
+        satId2RxSm[SAT_ID]->setVariableValue("shade",0.0);
+        satId2TxSm[SAT_ID]->setVariableValue("shade",0.0);
+      }
       // Update state machine states and log state if changed
       satId2PrevAdacsState[SAT_ID] =
        satId2AdacsSm[SAT_ID]->getCurrentState();
@@ -1322,9 +1359,14 @@ int main(int argc, char** argv) {
        satId2TxSm[SAT_ID]->getCurrentState();
       satId2AdacsSm[SAT_ID]->updateState();
       satId2CameraSm[SAT_ID]->updateState();
-      satId2ComputerSm[SAT_ID]->updateState();
       satId2RxSm[SAT_ID]->updateState();
       satId2TxSm[SAT_ID]->updateState();
+      if(satId2TxSm[SAT_ID]->getCurrentState()=="TX") {
+        satId2ComputerSm[SAT_ID]->setVariableValue("comms",1.0);
+      } else {
+        satId2ComputerSm[SAT_ID]->setVariableValue("comms",0.0);
+      }
+      satId2ComputerSm[SAT_ID]->updateState();
       if(
        satId2AdacsSm[SAT_ID]->getCurrentState()!=satId2PrevAdacsState[SAT_ID]
       ) {
