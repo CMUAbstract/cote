@@ -4,6 +4,9 @@ CMakeCache.txt
 cmake_install.cmake
 Makefile
 
+# Python
+p3-env/
+
 # Files
 *.csv
 
