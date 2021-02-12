@@ -39,7 +39,7 @@ then
   rm gmp-6.1.2.tar.bz2
   cp -rp gmp-6.1.2/ gcc-8.3.0/gmp/
   rm -rf gmp-6.1.2/
-  wget https://www.mpfr.org/mpfr-current/mpfr-4.0.2.tar.gz
+  wget https://www.mpfr.org/mpfr-4.0.2/mpfr-4.0.2.tar.gz
   tar xzf mpfr-4.0.2.tar.gz
   rm mpfr-4.0.2.tar.gz
   cp -rp mpfr-4.0.2/ gcc-8.3.0/mpfr/

@@ -22,6 +22,10 @@ cd $HOME/git-repos/cote/scripts
 ./setup_dependencies.sh $HOME/sw
 ```
 
+NOTE: In some cases, you may observe some errors in the output of the
+`setup_dependencies.sh` script. So long as `gcc-8.3.0-install/bin/` contains
+`g++`, then the setup script is successful.
+
 **Some Usage Notes**
 
 For immediate results, run the `setup_dependencies.sh` script and then run any
