@@ -391,6 +391,16 @@ namespace cote { namespace util {
    const double& capacitanceF, const double& currentA, const double& esrOhm
   );
 
+  // Determine whether line of sight (LoS) exists for a crosslink
+  // See https://en.wikipedia.org/wiki/Line%E2%80%93sphere_intersection
+  // Parameters:
+  //  srcSatEciPosnKm: the source satellite ECI position in kilometers
+  //  dstSatEciPosnKm: the destination satellite ECI position in kilometers
+  bool crosslinkLoSAvailable(
+   const std::array<double,3>& srcSatEciPosnKm,
+   const std::array<double,3>& dstSatEciPosnKm
+  );
+
   double calcAtmosphericLoss();
 
   double calcSystemNoiseTemp(

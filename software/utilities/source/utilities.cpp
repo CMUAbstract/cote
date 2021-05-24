@@ -815,6 +815,36 @@ namespace cote { namespace util {
     return 0.5*(chargeC/capacitanceF+currentA*esrOhm+std::sqrt(discriminant));
   }
 
+  bool crosslinkLoSAvailable(
+   const std::array<double,3>& srcSatEciPosnKm,
+   const std::array<double,3>& dstSatEciPosnKm
+  ) {
+    const std::array<double,3> o_vec = srcSatEciPosnKm;
+    const std::array<double,3> u_vec =
+     calcSeparationVector(dstSatEciPosnKm,srcSatEciPosnKm);
+    const double u_mag = magnitude(u_vec);
+    const std::array<double,3> u_hat = {
+     u_vec.at(0)/u_mag, u_vec.at(1)/u_mag, u_vec.at(2)/u_mag
+    };
+    const double r = cnst::WGS_72_A + 100.0;
+    const double d_disc =
+     std::pow(dotProduct(u_hat,o_vec),2.0)-
+     std::pow(magnitude(o_vec),2.0)+
+     std::pow(r,2.0);
+    if(d_disc<0.0) {       // LoS does not intersect with Earth; dst sat visible
+      return true;
+    } else {
+      const double d = -1.0*dotProduct(u_hat,o_vec)+std::sqrt(d_disc);
+      if(d<0.0) {          // Earth in opposite direction from dst sat; visible
+        return true;
+      } else if(d<u_mag) { // d to Earth less than d to dst sat; LoS blocked
+        return false;
+      } else {             // d to Earth greater than d to dst sat; dst visible
+        return true;
+      }
+    }
+  }
+
   double calcAtmosphericLoss() {
     return 1.0;
   }
