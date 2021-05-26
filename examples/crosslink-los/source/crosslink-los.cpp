@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
   while(stepCount<numSteps) {
     for(std::size_t i=0; i<satellites.size(); i++) {
       const uint32_t SAT_ID_I = satellites.at(i).getID();
-      const std::array<double,3>& srcSatEciPosnKm =
+      const std::array<double,3> srcSatEciPosnKm =
        satellites.at(i).getECIPosn();
       // Log every satellite position at every time step
       std::ostringstream oss;
@@ -167,11 +167,11 @@ int main(int argc, char** argv) {
        std::string(oss.str()+"-z-km"),
        std::to_string(srcSatEciPosnKm.at(2))
       );
-      for(std::size_t j=0; i<satellites.size(); j++) {
+      for(std::size_t j=0; j<satellites.size(); j++) {
         const uint32_t SAT_ID_J = satellites.at(j).getID();
         if(SAT_ID_I!=SAT_ID_J) {
           // Log whether a crosslink LoS is available for every other satellite
-          const std::array<double,3>& dstSatEciPosnKm =
+          const std::array<double,3> dstSatEciPosnKm =
            satellites.at(j).getECIPosn();
           if(
            cote::util::crosslinkLoSAvailable(srcSatEciPosnKm,dstSatEciPosnKm)
