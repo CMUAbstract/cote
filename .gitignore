@@ -38,3 +38,4 @@ generate_sat_azel
 generate_irradiance_trace
 generate_voltage_trace
 all_params
+generate_links
