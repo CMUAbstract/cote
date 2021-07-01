@@ -17,14 +17,10 @@ See our Best Paper from ASPLOS'20:
 * CMake for building Makefiles
 
 ```bash
-sudo apt install build-essential cmake
+sudo apt install build-essential cmake texinfo
 cd $HOME/git-repos/cote/scripts
 ./setup_dependencies.sh $HOME/sw
 ```
-
-NOTE: In some cases, you may observe some errors in the output of the
-`setup_dependencies.sh` script. So long as `gcc-8.3.0-install/bin/` contains
-`g++`, then the setup script is successful.
 
 **Some Usage Notes**
 
@@ -34,16 +30,15 @@ and, depending on the example, you may need to copy the sample configuration
 files into the configuration folder; if so, there is a script to do this for you
 in the corresponding scripts directory.
 
-There is a README file in pretty much every directory. The repository is
-designed to be more or less self-documenting, with any questions that may arise
-answered in a nearby README file or, in the case of software and scripts,
-in-file comments.
+There is a README file in nearly every directory. The repository is designed to
+be relatively self-documenting, with any questions that may arise answered in a
+nearby README file or, in the case of software and scripts, in-file comments.
 
 `cote` programs ingest a handful of configuration files (using the C++17
-filesystem feature); the configuration files are pretty ad-hoc at the moment and
+filesystem feature); currently, the configuration file formats are ad-hoc and
 could eventually be well-defined and collected into a single, well-formatted
-JSON file for example. For now, follow the sample configuration files located in
-the sample directory in the `scripts` folder of example programs.
+JSON file for example. For now, follow the format of the sample configuration
+files; character positions and field widths matter.
 
 Because program configurations are specified in configuration files, they can be
 changed without needing to recompile the programs in order to try new
@@ -58,13 +53,6 @@ epoch. Two scripts exist to generate these files for you:
 `cote/scripts/generate_small_step_config_files.py`. You should usually use
 `generate_small_step_config_files.py` unless your simulation will make large
 (one second or greater) time steps between iterations.
-
-`cote` has been tested on Linux and macOS but not Windows; you may want to use
-WSL on Windows. `cote` is extremely reliable and well-tested but we don't have
-any CI so ping me if you notice some silly snag somewhere.
-
-We have a CONTRIBUTING document but currently don't enforce it because most
-people just can't handle it.
 
 ## Directory Contents
 

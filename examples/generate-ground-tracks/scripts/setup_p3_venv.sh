@@ -18,7 +18,7 @@ python3 -m pip install pyshp==2.1.0
 python3 -m pip install numpy==1.17.2
 python3 -m pip install matplotlib==3.1.1
 python3 -m pip install shapely==1.6.4
-python3 -m pip install cartopy==0.17.0
+python3 -m pip install git+https://github.com/snowman2/cartopy.git@5e624fe
 python3 -m pip install pykdtree==1.3.1
 python3 -m pip install scipy==1.3.1
 deactivate

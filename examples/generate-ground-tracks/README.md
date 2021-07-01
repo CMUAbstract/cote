@@ -7,8 +7,10 @@ In order to run the script that produces a ground track PDF, the following
 software must be installed:
 
 ```bash
-sudo apt install libproj-dev
 sudo apt install libgeos-dev
+sudo apt install libproj-dev
+sudo apt install libopenblas-dev
+sudo apt install gfortran
 ```
 
 ## Directory Contents
