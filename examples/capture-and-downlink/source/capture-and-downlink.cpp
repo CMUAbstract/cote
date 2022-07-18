@@ -11,6 +11,7 @@
 
 // Standard library
 #include <algorithm>         // max
+#include <cmath>             // round
 #include <cstdlib>           // exit, EXIT_SUCCESS
 #include <filesystem>        // path
 #include <fstream>           // ifstream
@@ -22,7 +23,7 @@
 
 // cote
 #include <Channel.hpp>       // Channel
-//#include <constants.hpp>     // constants
+#include <constants.hpp>     // WGS_84_A
 #include <DateTime.hpp>      // DateTime
 #include <GroundStation.hpp> // GroundStation
 #include <Log.hpp>           // Log
@@ -31,7 +32,7 @@
 #include <Satellite.hpp>     // Satellite
 #include <Sensor.hpp>        // Sensor
 #include <Transmitter.hpp>   // Transmitter
-//#include <utilities.hpp>     // calcJulianDayFromYMD, calcSecSinceMidnight
+#include <utilities.hpp>     // calcJulianDayFromYMD, calcSecSinceMidnight
 
 int main(int argc, char** argv) {
   // Set up configuration variables
@@ -256,9 +257,135 @@ int main(int argc, char** argv) {
   gndId2Rx[rxGndId] = new cote::Receiver(
    rxGndPosn,rxGndGainDB,&dateTime,rxGndId,&log
   );
+  // Simulation data
+  std::map<uint32_t,double> satId2ThresholdKm;
+  //std::map<uint32_t,bool> satId2TxOccupied;
+  std::map<uint32_t,uint64_t> satId2TxBufferBits;
+  satId2ThresholdKm[satId] =
+   satId2ThreshCoeff[satId]*
+   cote::util::calcAltitudeKm(satellite.getECIPosn());
+  //satId2TxOccupied[satId] = false;
+  satId2TxBufferBits[satId] = 0;
+  // Simulation loop
+  uint64_t stepCount = 0;
+  while(stepCount<numSteps) {
+    // Date and time
+    const double JD = cote::util::calcJulianDayFromYMD(
+     dateTime.getYear(),dateTime.getMonth(),dateTime.getDay()
+    );
+    const uint32_t SEC = cote::util::calcSecSinceMidnight(
+     dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond()
+    );
+    const uint32_t NS = dateTime.getNanosecond();
+    // Simulate satellite
+    const std::array<double,3> SAT_ECI_POSN_KM = satId2Sat[satId]->getECIPosn();
+    // Simulate satellite sensor (data collection)
+    const std::array<double,3> PREV_SENSE_POSN =
+     satId2Sensor[satId]->getPrevSensePosn();
+    const cote::DateTime PREV_SENSE_DATE_TIME =
+     satId2Sensor[satId]->getPrevSenseDateTime();
+    const double PREV_SENSE_JD = cote::util::calcJulianDayFromYMD(
+     PREV_SENSE_DATE_TIME.getYear(), PREV_SENSE_DATE_TIME.getMonth(),
+     PREV_SENSE_DATE_TIME.getDay()
+    );
+    const uint32_t PREV_SENSE_SEC = cote::util::calcSecSinceMidnight(
+     PREV_SENSE_DATE_TIME.getHour(), PREV_SENSE_DATE_TIME.getMinute(),
+     PREV_SENSE_DATE_TIME.getSecond()
+    );
+    const uint32_t PREV_SENSE_NS = PREV_SENSE_DATE_TIME.getNanosecond();
+    const double PREV_SENSE_LAT =
+     cote::util::calcSubpointLatitude(PREV_SENSE_POSN);
+    const double PREV_SENSE_LON = cote::util::calcSubpointLongitude(
+     PREV_SENSE_JD, PREV_SENSE_SEC, PREV_SENSE_NS, PREV_SENSE_POSN
+    );
+    const double SAT_LAT =
+     cote::util::calcSubpointLatitude(SAT_ECI_POSN_KM);
+    const double SAT_LON = cote::util::calcSubpointLongitude(
+     JD, SEC, NS, SAT_ECI_POSN_KM
+    );
+    const double DIST_KM = cote::util::calcGreatCircleArc(
+     SAT_LON, SAT_LAT, PREV_SENSE_LON, PREV_SENSE_LAT
+    )*cote::cnst::WGS_84_A; // Earth "radius" in km
+    if(DIST_KM>=satId2ThresholdKm[satId]) {
+      // Increment bits sensed
+      satId2TxBufferBits[satId] += satId2Sensor[satId]->getBitsPerSense();
+      // Update the threshold value for next GTFR sense event
+      const double SAT_ALT_KM = cote::util::calcAltitudeKm(SAT_ECI_POSN_KM);
+      satId2ThresholdKm[satId] = satId2ThreshCoeff[satId]*SAT_ALT_KM;
+      // Trigger a sense event now to update prevSense values
+      satId2Sensor[satId]->triggerSense();
+      // Calculate GSD
+      const double GSD =
+       satId2PixelSizeM[satId]*SAT_ALT_KM*cote::cnst::M_PER_KM/
+       satId2FocalLengthM[satId];
+      // Log the sense trigger event
+      std::ostringstream oss;
+      oss << "sat-" << std::setw(10) << std::setfill('0') << satId;
+      log.meas(
+       cote::LogLevel::INFO,
+       //dateTime.toString(),
+       std::to_string(stepCount),
+       std::string(oss.str()+"-alt-km"),
+       std::to_string(SAT_ALT_KM)
+      );
+      log.meas(
+       cote::LogLevel::INFO,
+       //dateTime.toString(),
+       std::to_string(stepCount),
+       std::string(oss.str()+"-x-km"),
+       std::to_string(SAT_ECI_POSN_KM.at(0))
+      );
+      log.meas(
+       cote::LogLevel::INFO,
+       //dateTime.toString(),
+       std::to_string(stepCount),
+       std::string(oss.str()+"-y-km"),
+       std::to_string(SAT_ECI_POSN_KM.at(1))
+      );
+      log.meas(
+       cote::LogLevel::INFO,
+       //dateTime.toString(),
+       std::to_string(stepCount),
+       std::string(oss.str()+"-z-km"),
+       std::to_string(SAT_ECI_POSN_KM.at(2))
+      );
+      log.meas(
+       cote::LogLevel::INFO,
+       //dateTime.toString(),
+       std::to_string(stepCount),
+       std::string(oss.str()+"-lat"),
+       std::to_string(SAT_LAT)
+      );
+      log.meas(
+       cote::LogLevel::INFO,
+       //dateTime.toString(),
+       std::to_string(stepCount),
+       std::string(oss.str()+"-lon"),
+       std::to_string(SAT_LON)
+      );
+      log.meas(
+       cote::LogLevel::INFO,
+       //dateTime.toString(),
+       std::to_string(stepCount),
+       std::string(oss.str()+"-gsd"),
+       std::to_string(GSD)
+      );
+    }
+    // TODO: downlink
 
-
-
+    // Update simulation to the next time step
+    dateTime.update(hourStep,minuteStep,secondStep,nsStep);
+    satellite.update(hourStep,minuteStep,secondStep,nsStep);
+    satId2Sensor[satId]->setECIPosn(satellite.getECIPosn());
+    satId2Sensor[satId]->update(hourStep,minuteStep,secondStep,nsStep);
+    satId2Tx[satId]->setPosn(satellite.getECIPosn());
+    satId2Tx[satId]->update(hourStep,minuteStep,secondStep,nsStep);
+    groundStation.update(hourStep,minuteStep,secondStep,nsStep);
+    gndId2Rx[gndId]->setPosn(groundStation.getECIPosn());
+    gndId2Rx[gndId]->update(hourStep,minuteStep,secondStep,nsStep);
+    // Increment step count
+    stepCount+=1;
+  }
   // Write out any remaining logs
   log.writeAll();
   // Clean up ground station RX
