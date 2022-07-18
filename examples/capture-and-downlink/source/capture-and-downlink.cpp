@@ -131,6 +131,13 @@ int main(int argc, char** argv) {
   const uint8_t minuteStep = static_cast<uint8_t>(std::stoi(line.substr(3,2)));
   const uint8_t secondStep = static_cast<uint8_t>(std::stoi(line.substr(6,2)));
   const uint32_t nsStep = static_cast<uint32_t>(std::stoul(line.substr(9,9)));
+  const double totalStepInSec =
+   (
+    static_cast<double>(hourStep)*static_cast<double>(cote::cnst::MIN_PER_HOUR)+
+    static_cast<double>(minuteStep)
+   )*static_cast<double>(cote::cnst::SEC_PER_MIN)+
+   static_cast<double>(secondStep)+
+   static_cast<double>(nsStep)/static_cast<double>(cote::cnst::NS_PER_SEC);
   // Set up step count
   std::ifstream numStepsHandle(numStepsFile.string());
   line = "";
@@ -370,9 +377,57 @@ int main(int argc, char** argv) {
        std::string(oss.str()+"-gsd"),
        std::to_string(GSD)
       );
+      log.meas(
+       cote::LogLevel::INFO,
+       //dateTime.toString(),
+       std::to_string(stepCount),
+       std::string(oss.str()+"-bits"),
+       std::to_string(satId2TxBufferBits[satId])
+      );
     }
-    // TODO: downlink
-
+    // Calculate and log downlink statistics if applicable
+    const double GND_LAT = groundStation.getLatitude();
+    const double GND_LON = groundStation.getLongitude();
+    const double GND_HAE = groundStation.getHAE();
+    if(cote::util::calcElevationDeg(
+     JD, SEC, NS, GND_LAT, GND_LON, GND_HAE, SAT_ECI_POSN_KM
+    )>=10.0) {
+      cote::Channel downlink(
+       satId2Tx[satId],gndId2Rx[gndId],
+       satId2TxCenterFrequencyHz[satId],satId2TxBandwidthHz[satId],
+       &dateTime,&log
+      );
+      const uint64_t TX_BITS = static_cast<uint64_t>(std::round(
+       static_cast<double>(downlink.getBitsPerSec())*totalStepInSec
+      ));
+      satId2Sensor[satId]->drainBuffer(TX_BITS);
+      if(TX_BITS<=satId2TxBufferBits[satId]) {
+        satId2TxBufferBits[satId] -= TX_BITS;
+      } else {
+        satId2TxBufferBits[satId] = 0;
+      }
+      const double downlinkMbps =
+       static_cast<double>(downlink.getBitsPerSec())/1.0e6;
+      // Assumes one millisecond time step
+      if(stepCount%1000==0) {
+        std::ostringstream oss;
+        oss << "sat-" << std::setw(10) << std::setfill('0') << satId;
+        log.meas(
+         cote::LogLevel::INFO,
+         //dateTime.toString(),
+         std::to_string(stepCount),
+         std::string(oss.str()+"-bits"),
+         std::to_string(satId2TxBufferBits[satId])
+        );
+        log.meas(
+         cote::LogLevel::INFO,
+         //dateTime.toString(),
+         std::to_string(stepCount),
+         std::string(oss.str()+"-downlink-Mbps"),
+         std::to_string(downlinkMbps)
+        );
+      }
+    }
     // Update simulation to the next time step
     dateTime.update(hourStep,minuteStep,secondStep,nsStep);
     satellite.update(hourStep,minuteStep,secondStep,nsStep);
