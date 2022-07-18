@@ -39,3 +39,4 @@ generate_irradiance_trace
 generate_voltage_trace
 all_params
 generate_links
+capture_and_downlink
